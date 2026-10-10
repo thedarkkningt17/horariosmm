@@ -1615,50 +1615,25 @@ $('#btnPrint').addEventListener('click', () => window.print());
 document.getElementById('footerYear').textContent = new Date().getFullYear();
 renderSwatches();
 loadTheme();
-USER = getSession();
-updateUserUI();
-
-// Sobrescribir hideLogin para que muestre/oculte la dropzone y refresque UI
-const _origHideLogin = hideLogin;
-hideLogin = function(){
-  _origHideLogin();
-  const dzEl = document.getElementById('dropzone');
-  if (USER && USER.rol === 'admin') dzEl.classList.add('on');
-  else dzEl.classList.remove('on');
-  updateCloudUI();
-  // Si es coordinador y ya hay datos en la nube, cargarlos al entrar
-  if (USER && USER.rol === 'coord' && FIREBASE_OK){
-    setTimeout(() => pullFromCloud(), 200);
-  }
-};
-
-if (!USER) showLogin();
 
 /* =========================================================
-   FIREBASE READY - cuando la librería esté lista
+   FIREBASE READY HANDLER (registrado ANTES del module)
    ========================================================= */
 window.addEventListener('firebase-ready', () => {
   FIREBASE_OK = true;
+  console.log('[FB] Evento firebase-ready recibido · USER:', USER);
   setCloudStatus('ok', '✅ Conectado a la nube', 'Firebase listo');
+  updateCloudUI();
 
-  console.log('[FB] Firebase listo · USER actual:', USER);
-
-  // Caso 1: coordinador ya logueado → cargar datos
+  // Si es coordinador ya logueado → cargar datos
   if (USER && USER.rol === 'coord'){
     pullFromCloud();
   }
-
-  // Caso 2: admin ya logueado → no hace nada automático, espera que suba Excel
-  // Caso 3: sin sesión → el login se encargará al entrar
-
-  // Actualizar botón de sincronización
-  updateCloudUI();
 });
 
 /* =========================================================
-   LOGIN → al terminar, si es coordinador, cargar datos de la nube
+   LOGIN ROBUSTO (reemplaza la función tryLogin original)
    ========================================================= */
-const _origTryLogin = tryLogin;
 tryLogin = function(){
   const activeTab = document.querySelector('.login-tab.active').dataset.tab;
   const err = document.getElementById('loginError');
@@ -1671,7 +1646,7 @@ tryLogin = function(){
       USER = { rol:'admin', nombre:'Administrador', dni:'', cargo:'' };
       setSession(USER);
       updateUserUI();
-      hideLogin();
+      hideLoginFn();
       showToast('Bienvenido, Administrador');
       if (CURRENT) applyUserFilter();
       updateCloudUI();
@@ -1688,10 +1663,9 @@ tryLogin = function(){
     err.textContent = 'Ingresa tu número de cédula.';
     return;
   }
+  console.log('[Login] Login coordinador · DNI:', dni, '· MODELS:', MODELS.length, '· FB_OK:', FIREBASE_OK);
 
-  console.log('[Login] Intento de login coordinador · DNI:', dni, '· MODELS:', MODELS.length);
-
-  // Si ya hay datos cargados (porque pullFromCloud ya corrió), validar de una
+  // Si ya hay datos cargados, validar directo
   if (MODELS.length){
     const found = findUserByDni(dni);
     if (!found){
@@ -1701,35 +1675,62 @@ tryLogin = function(){
     USER = { rol:'coord', nombre:found.nombre, dni, cargo:found.cargo || 'Coordinador' };
     setSession(USER);
     updateUserUI();
-    hideLogin();
+    hideLoginFn();
     showToast(`Bienvenido, ${USER.nombre}`);
     applyUserFilter();
     updateCloudUI();
     return;
   }
 
-  // Si no hay datos aún, guardamos la sesión y cargamos desde la nube
+  // Sin datos todavía: guardar DNI y disparar carga
   USER = { rol:'coord', nombre:'Cargando…', dni, cargo:'' };
   setSession(USER);
   updateUserUI();
-  hideLogin();
+  hideLoginFn();
   showToast('Sesión iniciada · cargando datos de la nube…');
 
   if (FIREBASE_OK){
     pullFromCloud();
   } else {
-    showToast('Esperando conexión a la nube…');
+    // Esperar al evento firebase-ready que ya tiene el handler arriba
+    console.log('[Login] Firebase no listo aún · esperando evento…');
+    // Timeout de seguridad: si en 5s no hay respuesta, avisar
+    setTimeout(() => {
+      if (!FIREBASE_OK){
+        setCloudStatus('err', '❌ No se pudo conectar a la nube',
+          'Verifica tu conexión a Internet y recarga la página (F5).');
+      }
+    }, 5000);
   }
 };
-// Reconectar el listener del botón de login (porque sobrescribimos la función)
 document.getElementById('loginBtn').onclick = tryLogin;
 
+/* Reasignar listeners de Enter por si el tryLogin cambió */
+document.getElementById('loginUser').onkeydown = e => { if (e.key==='Enter') document.getElementById('loginPass').focus(); };
+document.getElementById('loginPass').onkeydown = e => { if (e.key==='Enter') tryLogin(); };
+document.getElementById('loginDni').onkeydown  = e => { if (e.key==='Enter') tryLogin(); };
+
 /* =========================================================
-   PULL FROM CLOUD → versión robusta que también valida al coordinador
+   HIDE LOGIN (con refresco de UI y auto-pull)
+   ========================================================= */
+function hideLoginFn(){
+  document.getElementById('loginOverlay').classList.remove('show');
+  const dzEl = document.getElementById('dropzone');
+  if (USER && USER.rol === 'admin') dzEl.classList.add('on');
+  else dzEl.classList.remove('on');
+  updateCloudUI();
+}
+// Sobrescribir la versión simple
+hideLogin = hideLoginFn;
+
+/* =========================================================
+   PULL FROM CLOUD
    ========================================================= */
 async function pullFromCloud(){
+  console.log('[FB] pullFromCloud() · FIREBASE_OK:', FIREBASE_OK, '· FB obj:', !!window.FB);
   if (!FIREBASE_OK || !window.FB){
-    setCloudStatus('err', '❌ Sin conexión a la nube');
+    setCloudStatus('err', '❌ Sin conexión a la nube',
+      'Firebase aún no está listo. Espera unos segundos y recarga si persiste.');
     return;
   }
   setCloudStatus('sync', '⏳ Leyendo datos de la nube…');
@@ -1744,7 +1745,6 @@ async function pullFromCloud(){
     MODELS = data.models || [];
     console.log('[FB] Datos recibidos:', MODELS.length, 'hojas ·', MODELS[0]?.rows?.length, 'personas');
 
-    // Reconstruir DIRECTORY desde los propios models
     DIRECTORY = new Map();
     MODELS.forEach(m => m.rows.forEach(r => {
       if (r.dni) DIRECTORY.set(r.dni, {
@@ -1755,15 +1755,14 @@ async function pullFromCloud(){
     const firstDate = MODELS[0]?.days?.find(d => d.date)?.date;
     if (firstDate && !CAL_MONTH) CAL_MONTH = { y: firstDate.y, m: firstDate.m };
 
-    // Refrescar UI
     const selHoja = $('#fHoja');
     selHoja.innerHTML = MODELS.map((m,i) => `<option value="${i}">${esc(m.sheetName)} · ${m.rows.length} personas</option>`).join('');
     $('#panel').classList.add('on');
     $('#coordSection').classList.add('on');
     $('#legend').style.display = 'flex';
 
-    // ====== VALIDAR SESIÓN DEL COORDINADOR ======
-    if (USER && USER.rol === 'coord' && (USER.cargo === '' || USER.nombre === 'Cargando…' || !USER.cargo)){
+    // Validar sesión del coordinador
+    if (USER && USER.rol === 'coord' && (!USER.cargo || USER.nombre === 'Cargando…')){
       const found = findUserByDni(USER.dni);
       console.log('[FB] Validando DNI', USER.dni, '→ encontrado:', found);
       if (found){
@@ -1773,8 +1772,6 @@ async function pullFromCloud(){
         updateUserUI();
       } else {
         showToast('⚠️ Tu cédula no aparece en los horarios publicados');
-        setCloudStatus('err', '⚠️ Tu cédula no está en los datos',
-          'Pídele al administrador que verifique tu registro.');
       }
     }
 
@@ -1782,12 +1779,10 @@ async function pullFromCloud(){
     selectModel(0);
     computeAlerts();
 
-    // Aplicar filtro de coordinador
     if (USER && USER.rol === 'coord'){
       applyUserFilter();
     }
 
-    // Actualizar header badge
     const totalPersonas = MODELS[0].rows.length;
     const totalCoords = new Set(MODELS[0].rows.map(r=>r.jefe)).size;
     $('#headerBadge').innerHTML = `<b>${totalPersonas}</b>colaboradores · ${totalCoords} coordinadores`;
@@ -1801,7 +1796,73 @@ async function pullFromCloud(){
   }
 }
 
-// Botón "Actualizar datos"
-document.getElementById('btnSync').addEventListener('click', pullFromCloud);
+/* =========================================================
+   PUSH TO CLOUD
+   ========================================================= */
+async function pushToCloud(){
+  if (!FIREBASE_OK || !window.FB){
+    setCloudStatus('err', '❌ Sin conexión a la nube');
+    showToast('Firebase no está listo');
+    return;
+  }
+  if (!MODELS.length){
+    showToast('Primero carga un Excel');
+    return;
+  }
+  setCloudStatus('sync', '⏳ Subiendo datos a la nube…');
+  try{
+    const payload = {
+      updatedAt: Date.now(),
+      uploadedBy: (USER && USER.nombre) || 'Admin',
+      models: MODELS.map(m => ({
+        sheetName: m.sheetName,
+        days: m.days,
+        metaCols: m.metaCols,
+        rows: m.rows
+      }))
+    };
+    await window.FB.setDoc(window.FB.doc(window.FB.db, 'horarios', 'actual'), payload);
+    setCloudStatus('ok', '✅ Datos publicados en la nube',
+      `<b>${MODELS.length}</b> hoja(s) · <b>${MODELS[0].rows.length}</b> personas · ${new Date().toLocaleString('es-CO')}`);
+    showToast('✅ Horarios publicados · ya los pueden ver todos');
+  } catch(err){
+    console.error(err);
+    setCloudStatus('err', '❌ Error al subir: ' + err.message);
+    showToast('Error al subir a la nube');
+  }
+}
+
+/* Botón sincronizar */
+document.getElementById('btnSync').onclick = pullFromCloud;
+
+/* =========================================================
+   ARRANQUE DE SESIÓN
+   ========================================================= */
+USER = getSession();
+updateUserUI();
+
+if (USER){
+  // Hay sesión guardada: aplicar visibilidad de la dropzone
+  const dzEl = document.getElementById('dropzone');
+  if (USER.rol === 'admin') dzEl.classList.add('on');
+  updateCloudUI();
+
+  // Si es coordinador y Firebase aún no está listo, el evento 'firebase-ready'
+  // ya tiene el handler y lo cargará.
+  if (USER.rol === 'coord' && FIREBASE_OK){
+    pullFromCloud();
+  }
+} else {
+  showLogin();
+}
+
+/* Fallback: si en 5 segundos no llegó el evento firebase-ready, avisar */
+setTimeout(() => {
+  if (!FIREBASE_OK){
+    console.warn('[FB] Timeout esperando Firebase · FIREBASE_OK sigue false');
+    setCloudStatus('err', '❌ No se pudo conectar a la nube',
+      'Verifica tu conexión y recarga la página (F5). Si persiste, puede ser bloqueo de la red.');
+  }
+}, 5000);
 </body>
 </html>
