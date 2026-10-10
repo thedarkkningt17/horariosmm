@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="abai">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horarios MediaMarkt · Abai</title>
+<script src="xlsx.full.min.js"></script>
+<style>
+  :root, [data-theme="abai"]{--brand:#E5007D;--brand-rgb:229,0,125;--brand-dark:#B3005F;--brand-soft:#FFF0F7;--dark:#1A1A2E;--dark-2:#26264A;--bg:#f1f5f9;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--work:#ecfdf5;--off:#f1f5f9}
+  [data-theme="ocean"]{--brand:#0077C8;--brand-rgb:0,119,200;--brand-dark:#005A96;--brand-soft:#E6F4FC;--dark:#0A2540;--dark-2:#1B3A5C;--bg:#f0f5fa;--ink:#0f172a;--muted:#5a7184;--line:#dbe7f0;--work:#e8f6ff;--off:#f0f5fa}
+  [data-theme="emerald"]{--brand:#10B981;--brand-rgb:16,185,129;--brand-dark:#0A8A60;--brand-soft:#E7FBF3;--dark:#0B2E24;--dark-2:#134438;--bg:#f0f9f5;--ink:#0f172a;--muted:#5b7d6f;--line:#d8ebe2;--work:#e7fbf3;--off:#f0f9f5}
+  [data-theme="sunset"]{--brand:#F97316;--brand-rgb:249,115,22;--brand-dark:#C4570C;--brand-soft:#FFF3E8;--dark:#2A1404;--dark-2:#4A2510;--bg:#fdf6f0;--ink:#0f172a;--muted:#8a6a52;--line:#f2e2d3;--work:#fff3e8;--off:#fdf6f0}
+  [data-theme="royal"]{--brand:#7C3AED;--brand-rgb:124,58,237;--brand-dark:#5B21B6;--brand-soft:#F2EBFF;--dark:#1E1B4B;--dark-2:#312E81;--bg:#f5f3ff;--ink:#0f172a;--muted:#6b678a;--line:#e4ddfa;--work:#f2ebff;--off:#f5f3ff}
+  [data-theme="crimson"]{--brand:#DC2626;--brand-rgb:220,38,38;--brand-dark:#991B1B;--brand-soft:#FEEBEB;--dark:#1C0A0A;--dark-2:#3A1414;--bg:#fdf2f2;--ink:#0f172a;--muted:#8a6060;--line:#f0d8d8;--work:#feecec;--off:#fdf2f2}
+  [data-theme="graphite"]{--brand:#334155;--brand-rgb:51,65,85;--brand-dark:#1E293B;--brand-soft:#EEF1F5;--dark:#0F172A;--dark-2:#1E293B;--bg:#f5f7fa;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--work:#eef2f7;--off:#f5f7fa}
+  [data-theme="cyan"]{--brand:#06B6D4;--brand-rgb:6,182,212;--brand-dark:#0E7490;--brand-soft:#E0F7FB;--dark:#062A33;--dark-2:#0E4A58;--bg:#f0fafc;--ink:#0f172a;--muted:#5a7f89;--line:#d6ecf1;--work:#e0f7fb;--off:#f0fafc}
+
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;min-height:100vh;transition:background-color .3s ease}
+
+  #loginOverlay{position:fixed;inset:0;z-index:1000;background:linear-gradient(120deg,var(--dark) 0%,var(--dark-2) 60%,var(--brand-dark) 140%);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
+  #loginOverlay.show{opacity:1;visibility:visible}
+  .login-card{background:#fff;border-radius:20px;padding:34px 30px;max-width:420px;width:100%;box-shadow:0 30px 60px -12px rgba(0,0,0,.5);position:relative;overflow:hidden}
+  .login-card::before{content:"";position:absolute;top:-100px;right:-100px;width:200px;height:200px;background:radial-gradient(circle,rgba(var(--brand-rgb),.18) 0%,transparent 70%);pointer-events:none}
+  .login-logo{display:inline-block;font-weight:900;font-size:26px;letter-spacing:-1px;color:var(--brand);background:#f1f5f9;padding:8px 16px;border-radius:10px;margin-bottom:18px}
+  .login-logo span{color:var(--dark)}
+  .login-card h2{margin:0 0 4px;font-size:19px;color:var(--dark)}
+  .login-card p.sub{margin:0 0 20px;font-size:13px;color:var(--muted)}
+  .login-tabs{display:flex;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:18px;gap:4px}
+  .login-tab{flex:1;padding:8px;border:0;background:transparent;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:700;color:#64748b;transition:.15s}
+  .login-tab.active{background:#fff;color:var(--dark);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .login-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+  .login-field label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .login-field input{padding:11px 13px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:14px;font-family:inherit;background:#fff;transition:.15s}
+  .login-field input:focus{outline:0;border-color:var(--brand);box-shadow:0 0 0 3px rgba(var(--brand-rgb),.15)}
+  .login-btn{width:100%;padding:12px;border:0;border-radius:10px;background:var(--brand);color:#fff;font-size:14px;font-weight:800;cursor:pointer;transition:.15s;margin-top:6px}
+  .login-btn:hover{background:var(--brand-dark)}
+  .login-error{color:#dc2626;font-size:12px;font-weight:600;margin-top:8px;min-height:16px;text-align:center}
+  .login-hint{font-size:11.5px;color:var(--muted);text-align:center;margin-top:16px;padding-top:14px;border-top:1px dashed #e2e8f0;line-height:1.6}
+  .login-hint code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:11px;color:var(--brand-dark)}
+
+  header{background:radial-gradient(circle at right -40px top -40px,rgba(var(--brand-rgb),.35) 0%,transparent 65%),linear-gradient(120deg,var(--dark) 0%,var(--dark-2) 55%,var(--brand-dark) 130%);color:#fff;padding:0;position:relative;z-index:30;transition:background .35s ease}
+  .header-inner{position:relative;z-index:1;display:flex;align-items:center;gap:22px;padding:20px 30px;flex-wrap:wrap}
+  .logo{font-family:"Segoe UI",Arial,sans-serif;font-weight:900;font-size:26px;letter-spacing:-1px;color:var(--brand);background:#fff;padding:8px 16px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.15);transition:color .3s ease}
+  .logo span{color:var(--dark)}
+  .title-block{flex:1;min-width:240px}
+  .title-block h1{margin:0;font-size:22px;font-weight:800;letter-spacing:.3px;display:flex;align-items:center;gap:10px}
+  .title-block h1::before{content:"";display:inline-block;width:5px;height:24px;background:var(--brand);border-radius:3px;transition:background .3s ease}
+  .title-block p{margin:6px 0 0 15px;font-size:12.5px;color:#c9c9d9;letter-spacing:.4px}
+  .header-actions{display:flex;align-items:center;gap:10px}
+  .header-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:8px 16px;border-radius:12px;font-size:12px;color:#fff;backdrop-filter:blur(6px);text-align:right;line-height:1.5}
+  .header-badge b{color:var(--brand);font-size:16px;display:block;transition:color .3s ease}
+
+  .user-wrap{position:relative}
+  .user-btn{display:flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;backdrop-filter:blur(6px);transition:.18s;font-family:inherit;font-size:12px}
+  .user-btn:hover{background:rgba(255,255,255,.2)}
+  .user-avatar{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff;background:var(--brand)}
+  .user-info{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
+  .user-name{font-weight:700;font-size:12px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .user-role{font-size:10px;opacity:.75;text-transform:uppercase;letter-spacing:.4px}
+  .user-panel{position:absolute;top:calc(100% + 10px);right:0;z-index:200;background:#fff;border-radius:14px;padding:10px;box-shadow:0 18px 40px -12px rgba(0,0,0,.35);border:1px solid rgba(0,0,0,.06);min-width:220px;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transition:.18s;transform-origin:top right}
+  .user-panel.open{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+  .user-panel-header{padding:8px 10px 12px;border-bottom:1px solid #e2e8f0;margin-bottom:8px}
+  .user-panel-header b{display:block;font-size:13px;color:var(--dark);margin-bottom:3px}
+  .user-panel-header small{color:#64748b;font-size:11px}
+  .user-panel button{width:100%;padding:9px 12px;border:0;border-radius:8px;background:transparent;text-align:left;font-size:13px;color:#334155;cursor:pointer;font-family:inherit;font-weight:600;transition:.12s;display:flex;align-items:center;gap:8px}
+  .user-panel button:hover{background:#f1f5f9}
+  .user-panel button.danger{color:#dc2626}
+  .user-panel button.danger:hover{background:#fee2e2}
+
+  .theme-wrap{position:relative}
+  .theme-btn{width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);transition:.18s}
+  .theme-btn:hover{background:rgba(255,255,255,.2);transform:translateY(-1px)}
+  .theme-panel{position:absolute;top:calc(100% + 10px);right:0;z-index:200;background:#fff;border-radius:14px;padding:12px;box-shadow:0 18px 40px -12px rgba(0,0,0,.35);border:1px solid rgba(0,0,0,.06);min-width:240px;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transition:.18s;transform-origin:top right}
+  .theme-panel.open{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+  .theme-panel h4{margin:0 0 10px;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#64748b;padding-left:4px}
+  .theme-swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+  .swatch{border:0;background:transparent;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9.5px;color:#475569;font-weight:700;letter-spacing:.2px;transition:.15s}
+  .swatch:hover{transform:translateY(-2px)}
+  .swatch .circle{width:34px;height:34px;border-radius:50%;position:relative;box-shadow:inset 0 0 0 2px rgba(255,255,255,.6),0 2px 6px rgba(0,0,0,.15);transition:.2s}
+  .swatch.active .circle{box-shadow:inset 0 0 0 2px #fff,0 0 0 3px var(--brand),0 2px 8px rgba(0,0,0,.2)}
+  .swatch.active{color:var(--brand)}
+  .swatch .circle::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:900;opacity:0;transition:opacity .15s;text-shadow:0 1px 3px rgba(0,0,0,.4)}
+  .swatch.active .circle::after{opacity:1}
+
+  main{padding:20px 30px 40px;max-width:100%;flex:1}
+  #dropzone{background:#fff;border:2px dashed #cbd5e1;border-radius:16px;padding:34px 20px;text-align:center;cursor:pointer;transition:.18s;box-shadow:0 1px 3px rgba(0,0,0,.05);display:none}
+  #dropzone.on{display:block}
+  #dropzone:hover,#dropzone.over{border-color:var(--brand);background:var(--brand-soft)}
+  #dropzone .big{font-size:34px;line-height:1}
+  #dropzone strong{display:block;margin:10px 0 4px;font-size:15px}
+  #dropzone small{color:var(--muted)}
+  #status{margin-top:10px;font-size:13px;color:var(--muted);min-height:18px}
+  #status.err{color:#dc2626;font-weight:600}
+  #status.ok{color:#059669;font-weight:600}
+
+  /* ===== BARRA DE ESTADO NUBE ===== */
+  #cloudBar{
+    display:none;margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 18px;
+    box-shadow:0 1px 3px rgba(0,0,0,.05);
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  }
+  #cloudBar.on{display:flex}
+  .cloud-status{display:flex;align-items:center;gap:8px;font-size:13px;color:#475569;font-weight:600}
+  .cloud-dot{width:10px;height:10px;border-radius:50%;background:#94a3b8;transition:.3s}
+  .cloud-dot.ok{background:#10b981;box-shadow:0 0 8px rgba(16,185,129,.6)}
+  .cloud-dot.err{background:#dc2626}
+  .cloud-dot.sync{background:#f59e0b;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .cloud-meta{font-size:12px;color:var(--muted);flex:1;min-width:200px}
+  .cloud-meta b{color:var(--dark);font-weight:800}
+
+  #coordSection{display:none;margin-top:22px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  #coordSection.on{display:block}
+  .section-title{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .section-title h2{margin:0;font-size:16px;font-weight:800;color:var(--dark);display:flex;align-items:center;gap:9px}
+  .section-title h2::before{content:"";display:inline-block;width:5px;height:18px;background:var(--brand);border-radius:3px;transition:background .3s ease}
+  .section-title small{color:var(--muted);font-size:12px}
+  .coord-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+  .coord-card{background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;transition:.15s;position:relative;overflow:hidden}
+  .coord-card:hover{border-color:var(--brand);transform:translateY(-2px);box-shadow:0 8px 20px -8px rgba(0,0,0,.25)}
+  .coord-card.active{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 8px 20px -8px rgba(0,0,0,.3)}
+  .coord-card.active::before{content:"";position:absolute;top:0;left:0;width:100%;height:4px;background:var(--brand)}
+  .coord-top{display:flex;align-items:center;gap:11px;margin-bottom:10px}
+  .avatar{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:15px;flex-shrink:0;letter-spacing:-.5px}
+  .coord-name{font-weight:800;font-size:13px;color:var(--dark);line-height:1.25}
+  .coord-cargo{font-size:10.5px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.4px}
+  .coord-stats{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .coord-tag{font-size:10.5px;font-weight:700;background:#f1f5f9;color:#475569;padding:3px 9px;border-radius:999px}
+  .coord-tag.pink{background:var(--brand-soft);color:var(--brand-dark)}
+
+  #alertPanel{display:none;margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  #alertPanel.on{display:block}
+  .alert-head{display:flex;align-items:center;gap:10px;padding:12px 18px;background:linear-gradient(90deg,#fef3c7,#fff);border-bottom:1px solid var(--line);border-left:4px solid #f59e0b;cursor:pointer;user-select:none}
+  .alert-head h3{margin:0;font-size:14px;color:#92400e;font-weight:800;display:flex;align-items:center;gap:8px}
+  .alert-count{background:#f59e0b;color:#fff;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px}
+  .alert-head .toggle{margin-left:auto;color:#92400e;font-size:18px;transition:transform .2s}
+  .alert-head.collapsed .toggle{transform:rotate(-90deg)}
+  .alert-body{max-height:340px;overflow:auto;padding:10px 16px 14px}
+  .alert-body.collapsed{display:none}
+  .alert-item{display:flex;align-items:flex-start;gap:11px;padding:9px 12px;border-radius:9px;margin-bottom:6px;font-size:12.5px;line-height:1.5}
+  .alert-item:last-child{margin-bottom:0}
+  .alert-item.crit{background:#fee2e2;border-left:3px solid #dc2626;color:#7f1d1d}
+  .alert-item.warn{background:#fef3c7;border-left:3px solid #f59e0b;color:#78350f}
+  .alert-item.info{background:#e0f2fe;border-left:3px solid #0284c7;color:#0c4a6e}
+  .alert-icon{font-size:15px;line-height:1.2;flex-shrink:0}
+  .alert-item b{font-weight:800}
+
+  #panel{margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:none;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  #panel.on{display:block}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .field select,.field input{padding:8px 10px;border:1px solid #cbd5e1;border-radius:9px;font-size:13px;background:#fff;min-width:150px}
+  .field input{min-width:200px}
+  .field select:focus,.field input:focus{outline:2px solid var(--brand);outline-offset:1px;border-color:var(--brand)}
+  .btn{padding:9px 14px;border:0;border-radius:9px;background:var(--brand);color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+  .btn:hover{background:var(--brand-dark)}
+  .btn.ghost{background:#e2e8f0;color:#0f172a}
+  .btn.ghost:hover{background:#cbd5e1}
+  .btn.cloud{background:#0ea5e9}
+  .btn.cloud:hover{background:#0284c7}
+  .chk{display:flex;align-items:center;gap:6px;font-size:13px;color:#334155;padding-bottom:9px}
+  .chk input{width:16px;height:16px;accent-color:var(--brand)}
+  .chk.small{font-size:12px;padding-bottom:0}
+
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+  .stat{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:12px;color:var(--muted)}
+  .stat b{display:block;font-size:18px;color:var(--ink);margin-top:2px}
+
+  .group{margin-top:22px;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .group-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;background:linear-gradient(90deg,#f8fafc,#fff);border-bottom:1px solid var(--line);border-left:4px solid var(--brand);transition:border-color .3s ease}
+  .group-head h3{margin:0;font-size:14px;color:var(--dark);font-weight:800}
+  .pill{font-size:11px;background:var(--brand-soft);color:var(--brand-dark);padding:3px 9px;border-radius:999px;font-weight:700}
+  .pill.g{background:#dcfce7;color:#166534}
+  .pill.w{background:#fef3c7;color:#92400e}
+  .pill.r{background:#fee2e2;color:#991b1b}
+
+  .table-wrap{overflow:auto;max-height:70vh;position:relative}
+  table{border-collapse:separate;border-spacing:0;font-size:11px;white-space:nowrap}
+  th,td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px 6px;text-align:center}
+  thead th{background:#f1f5f9;position:sticky;top:0;z-index:5;font-weight:700;color:#334155;font-size:10px}
+  thead tr:nth-child(2) th{top:23px}
+  th.week{background:var(--brand-soft);color:var(--brand-dark);font-size:10px;letter-spacing:.4px}
+  th.day span{display:block;font-weight:400;color:#94a3b8;font-size:9px}
+  th.c-idx,td.c-idx{position:sticky;left:0;z-index:6;background:#fff;width:34px;min-width:34px}
+  th.c-dni,td.c-dni{position:sticky;left:34px;z-index:6;background:#fff;width:88px;min-width:88px;text-align:left}
+  th.c-nom,td.c-nom{position:sticky;left:122px;z-index:6;background:#fff;width:220px;min-width:220px;text-align:left;box-shadow:2px 0 4px -2px rgba(0,0,0,.15)}
+  thead th.c-idx,thead th.c-dni,thead th.c-nom{background:#f1f5f9;z-index:8}
+  td.meta{color:#475569;font-size:10px;max-width:130px;overflow:hidden;text-overflow:ellipsis}
+  td.c-nom{font-weight:700;font-size:11px;color:var(--dark)}
+  tbody tr:nth-child(even) td.c-idx,tbody tr:nth-child(even) td.c-dni,tbody tr:nth-child(even) td.c-nom{background:#f8fafc}
+  tbody tr:hover td{background:var(--brand-soft)!important}
+  td.dc{min-width:74px;font-size:10px;padding:3px 4px}
+  td.dc .code{display:block;color:#065f46;font-weight:600}
+  td.dc.work{background:var(--work)}
+  td.dc.off{background:var(--off)}
+  td.dc.off .offcode{display:block;color:#64748b;font-weight:700;letter-spacing:.5px}
+  td.dc.empty{background:#fafafa}
+  td.tot{font-weight:800;background:#f8fafc;color:var(--brand-dark);position:sticky;right:0;z-index:4;border-left:2px solid var(--line)}
+  th.c-tot{background:#f1f5f9;position:sticky;right:0;z-index:7;border-left:2px solid var(--line)}
+  tfoot td{background:#f1f5f9;font-weight:800;position:sticky;bottom:0;z-index:3}
+  .hide-dni th.c-dni,.hide-dni td.c-dni{display:none}
+  .hide-dni th.c-nom,.hide-dni td.c-nom{left:34px}
+  .hide-tot th.c-tot,.hide-tot td.tot{display:none}
+  .hide-meta .col-modo,.hide-meta .col-contrato{display:none}
+  .legend{margin-top:16px;font-size:12px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
+  .legend b{color:#334155}
+  .empty-msg{padding:40px;text-align:center;color:var(--muted);font-size:14px}
+
+  .own-banner{background:var(--brand-soft);border-left:4px solid var(--brand);border-radius:10px;padding:10px 16px;margin-top:14px;font-size:13px;color:var(--brand-dark);display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-weight:600}
+  .own-banner button{background:var(--brand);color:#fff;border:0;padding:5px 12px;border-radius:7px;font-size:12px;cursor:pointer;font-weight:700}
+  .own-banner button:hover{background:var(--brand-dark)}
+
+  .cal-container{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px}
+  .cal-title{font-size:18px;font-weight:800;color:var(--dark);text-transform:capitalize}
+  .cal-nav{display:flex;gap:8px}
+  .cal-nav button{border:1px solid var(--line);background:#fff;border-radius:9px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:700;color:#334155;font-family:inherit;transition:.15s}
+  .cal-nav button:hover{background:#f1f5f9;border-color:var(--brand);color:var(--brand)}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .cal-dow{padding:8px 4px;text-align:center;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;background:#f8fafc;border-radius:8px}
+  .cal-day{min-height:90px;border-radius:10px;padding:8px;background:#fafbfc;border:1px solid #eef2f6;position:relative;transition:.15s;overflow:hidden}
+  .cal-day:hover{border-color:var(--brand);box-shadow:0 4px 10px -4px rgba(0,0,0,.15)}
+  .cal-day.empty{background:transparent;border:0}
+  .cal-day-num{font-size:13px;font-weight:800;color:var(--dark);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
+  .cal-day-num small{font-size:10px;font-weight:600;color:var(--muted)}
+  .cal-day-stat{font-size:10px;color:#475569;line-height:1.5}
+  .cal-day-stat b{color:var(--brand-dark);font-weight:800}
+  .cal-bar{height:4px;background:#e2e8f0;border-radius:2px;margin-top:6px;overflow:hidden}
+  .cal-bar-fill{height:100%;background:var(--brand);border-radius:2px;transition:width .3s}
+  .cal-shift{font-size:10px;font-weight:700;color:#065f46;background:#ecfdf5;padding:3px 6px;border-radius:6px;margin-top:4px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cal-shift.off{background:#f1f5f9;color:#64748b}
+  .cal-empty-msg{padding:20px;text-align:center;color:var(--muted);font-size:13px;margin-top:14px}
+
+  .cmp-container{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .cmp-controls{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+  .cmp-vs{font-weight:900;color:var(--brand);font-size:20px;padding-bottom:8px;align-self:flex-end}
+  .cmp-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-bottom:14px;padding:8px 12px;background:#f8fafc;border-radius:8px}
+  .cmp-legend span{display:flex;align-items:center;gap:5px}
+  .cmp-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .cmp-dot.up{background:#10b981}
+  .cmp-dot.down{background:#dc2626}
+  .cmp-dot.same{background:#94a3b8}
+  .diff-up{color:#059669;font-weight:800}
+  .diff-down{color:#dc2626;font-weight:800}
+  .diff-same{color:#94a3b8;font-weight:700}
+
+  footer{background:radial-gradient(circle at left -40px bottom -70px,rgba(var(--brand-rgb),.25) 0%,transparent 70%),linear-gradient(120deg,var(--dark) 0%,var(--dark-2) 60%,var(--brand-dark) 140%);color:#c9c9d9;padding:18px 30px;position:relative;border-top:3px solid var(--brand);transition:background .35s ease,border-color .3s ease}
+  .footer-inner{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px}
+  .footer-brand{display:flex;align-items:center;gap:12px}
+  .footer-logo{font-family:"Segoe UI",Arial,sans-serif;font-weight:900;font-size:20px;letter-spacing:-.5px;color:var(--brand);background:#fff;padding:6px 13px;border-radius:9px;box-shadow:0 3px 12px rgba(0,0,0,.25);line-height:1;transition:color .3s ease}
+  .footer-logo span{color:var(--dark)}
+  .footer-text{font-size:12px;line-height:1.5}
+  .footer-text b{color:#fff;font-size:13px;letter-spacing:.3px}
+  .footer-text small{color:#8a8aa0;font-size:11px}
+  .footer-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:#9a9ab0}
+  .footer-meta span{display:flex;align-items:center;gap:6px}
+  .footer-meta b{color:var(--brand);font-weight:800;transition:color .3s ease}
+  .footer-dot{width:6px;height:6px;border-radius:50%;background:var(--brand);display:inline-block}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--dark);color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;box-shadow:0 12px 30px -8px rgba(0,0,0,.4);transition:opacity .25s ease,transform .25s ease;display:flex;align-items:center;gap:10px;z-index:100;border-left:4px solid var(--brand)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast .dot{width:10px;height:10px;border-radius:50%;background:var(--brand)}
+
+  @media print{
+    header{background:#fff!important;color:#000!important;padding:8px 0}
+    .header-inner{padding:0 0 12px}
+    .logo{background:transparent!important;color:var(--brand)!important;box-shadow:none;padding:0}
+    .title-block h1{color:#000!important}
+    .title-block h1::before{background:var(--brand)!important}
+    .title-block p{color:#555!important}
+    #dropzone,#panel,.legend,.btn,#coordSection,.theme-wrap,.toast,#alertPanel,.user-wrap,#loginOverlay,#cloudBar{display:none!important}
+    .table-wrap{max-height:none;overflow:visible}
+    .group{page-break-inside:avoid;box-shadow:none}
+    body{background:#fff}
+    footer{background:#fff!important;color:#000!important;border-top:2px solid var(--brand)!important;padding:12px 0}
+    .footer-logo{background:transparent!important;color:var(--brand)!important;box-shadow:none;padding:0}
+    .footer-text b,.footer-text small,.footer-meta{color:#000!important}
+  }
+</style>
+</head>
+<body>
+
+<div id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">abai<span>.</span></div>
+    <h2>Acceso al visor</h2>
+    <p class="sub">Horarios MediaMarkt · Bucaramanga</p>
+    <div class="login-tabs">
+      <button class="login-tab active" data-tab="admin">Administrador</button>
+      <button class="login-tab" data-tab="coord">Coordinador</button>
+    </div>
+    <div id="tabAdmin">
+      <div class="login-field">
+        <label for="loginUser">Usuario</label>
+        <input id="loginUser" type="text" placeholder="admin" autocomplete="username">
+      </div>
+      <div class="login-field">
+        <label for="loginPass">Contraseña</label>
+        <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+    </div>
+    <div id="tabCoord" style="display:none">
+      <div class="login-field">
+        <label for="loginDni">Tu número de cédula</label>
+        <input id="loginDni" type="text" placeholder="Ej: 1005235330" autocomplete="off">
+      </div>
+    </div>
+    <button class="login-btn" id="loginBtn">Entrar</button>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-hint">
+      Admin: <code>admin</code> / <code>admin123</code><br>
+      Coordinador: tu cédula registrada en la BBDD
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">abai<span>.</span></div>
+    <div class="title-block">
+      <h1>Horarios MediaMarkt</h1>
+      <p>Centro Bucaramanga · ABTSCOL_BUC_MMARKT · Validación Octubre</p>
+    </div>
+    <div class="header-actions">
+      <div class="theme-wrap">
+        <button class="theme-btn" id="themeBtn" title="Cambiar tema de colores">🎨</button>
+        <div class="theme-panel" id="themePanel">
+          <h4>Temas de colores</h4>
+          <div class="theme-swatches" id="themeSwatches"></div>
+        </div>
+      </div>
+      <div class="user-wrap">
+        <button class="user-btn" id="userBtn">
+          <div class="user-avatar" id="userAvatar">?</div>
+          <div class="user-info">
+            <div class="user-name" id="userName">Invitado</div>
+            <div class="user-role" id="userRole">Sin sesión</div>
+          </div>
+        </button>
+        <div class="user-panel" id="userPanel">
+          <div class="user-panel-header">
+            <b id="userPanelName">Invitado</b>
+            <small id="userPanelRole">Sin sesión iniciada</small>
+          </div>
+          <button id="btnChangeUser">🔄 Cambiar usuario</button>
+          <button id="btnLogout" class="danger">🚪 Cerrar sesión</button>
+        </div>
+      </div>
+      <div class="header-badge" id="headerBadge">
+        <b>—</b>
+        Sin archivo cargado
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Barra de estado nube (visible para admin y coordinadores) -->
+  <div id="cloudBar">
+    <div class="cloud-status">
+      <span class="cloud-dot" id="cloudDot"></span>
+      <span id="cloudText">Conectando a la nube…</span>
+    </div>
+    <div class="cloud-meta" id="cloudMeta"></div>
+    <button class="btn cloud" id="btnSync" style="display:none">🔄 Actualizar datos</button>
+  </div>
+
+  <!-- Zona de carga (solo admin) -->
+  <div id="dropzone">
+    <div class="big">📂</div>
+    <strong>Arrastra el archivo Excel aquí o haz clic para seleccionarlo</strong>
+    <small>Formatos: .xlsx · .xls · .xlsm</small>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm" hidden>
+  </div>
+  <div id="status"></div>
+
+  <section id="coordSection">
+    <div class="section-title">
+      <h2>Coordinadores</h2>
+      <small>Haz clic en una tarjeta para ver el horario de su equipo · botón "Ver su horario" para el propio</small>
+    </div>
+    <div class="coord-grid" id="coordGrid"></div>
+  </section>
+
+  <section id="alertPanel">
+    <div class="alert-head" id="alertHead">
+      <h3>⚠️ Alertas automáticas</h3>
+      <span class="alert-count" id="alertCount">0</span>
+      <span class="toggle">▾</span>
+    </div>
+    <div class="alert-body" id="alertBody"></div>
+  </section>
+
+  <section id="panel">
+    <div class="controls">
+      <div class="field"><label for="fHoja">Hoja</label><select id="fHoja"></select></div>
+      <div class="field"><label for="fJefe">Jefe inmediato</label><select id="fJefe"></select></div>
+      <div class="field"><label for="fSemana">Semana</label><select id="fSemana"></select></div>
+      <div class="field"><label for="fBuscar">Buscar (nombre o cédula)</label><input id="fBuscar" type="search" placeholder="Ej: LAURA o 1098151891"></div>
+      <div class="field">
+        <label for="fVista">Vista</label>
+        <select id="fVista">
+          <option value="detalle">Detalle (día a día)</option>
+          <option value="resumen">Resumen semanal</option>
+          <option value="calendario">📅 Calendario</option>
+          <option value="comparar">📊 Comparar semanas</option>
+        </select>
+      </div>
+      <button class="btn ghost" id="btnCsv">⬇ CSV</button>
+      <button class="btn ghost" id="btnPrint">🖨 Imprimir</button>
+    </div>
+    <div class="controls" style="margin-top:12px;padding-top:12px;border-top:1px dashed #e2e8f0">
+      <label class="chk small"><input type="checkbox" id="fHideDni"> Ocultar DNI</label>
+      <label class="chk small"><input type="checkbox" id="fHideMeta"> Ocultar MODO y CONTRATO</label>
+      <label class="chk small"><input type="checkbox" id="fHideTot"> Ocultar total horas</label>
+      <label class="chk small"><input type="checkbox" id="fSoloHoras"> Solo horas</label>
+    </div>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <div id="ownBanner"></div>
+  <div id="out"></div>
+
+  <div class="legend" id="legend" style="display:none">
+    <span><b>L</b> = Libre / Descanso</span>
+    <span><b>V</b> = Vacaciones</span>
+    <span><b>CE</b> = Cesante / sin servicio</span>
+    <span><b>BM / BD</b> = Baja médica / Baja</span>
+    <span><b>Turno partido</b>: <code>01:00–07:00 + 09:00–14:00</code></span>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo">LE<span>.</span></div>
+      <div class="footer-text">
+        <b>Diseñado por Ledezma Enterprises</b><br>
+        <small>Soluciones digitales a la medida · © <span id="footerYear"></span> Todos los derechos reservados</small>
+      </div>
+    </div>
+    <div class="footer-meta">
+      <span><span class="footer-dot"></span> Visor de Horarios <b>v5.0 · Nube</b></span>
+      <span>Cliente: <b>Abai · MediaMarkt</b></span>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"><span class="dot"></span><span id="toastMsg"></span></div>
+
+<!-- ============ FIREBASE SDK (versión modular, vía CDN) ============ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDZYwczvqrHmi7bHH0Us4u4EBCj9SUtsj4",
+  authDomain: "horarios-mediamarkt-95d3d.firebaseapp.com",
+  projectId: "horarios-mediamarkt-95d3d",
+  storageBucket: "horarios-mediamarkt-95d3d.firebasestorage.app",
+  messagingSenderId: "520906911737",
+  appId: "1:520906911737:web:24d6a8b80591475aa55728"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const fbDb = getFirestore(fbApp);
+
+// Exponer al scope global para que el script principal los use
+window.FB = { db: fbDb, doc, getDoc, setDoc };
+
+// Avisar al script principal cuando Firebase esté listo
+window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<script>
+/* =========================================================
+   CONFIGURACIÓN
+   ========================================================= */
+const CREDENTIALS = { admin: { user:'admin', pass:'admin123' } };
+const SESSION_KEY = 'le_horarios_session';
+const CLOUD_DOC = 'horarios/actual';  // ruta del documento en Firestore
+
+let USER = null;
+let MODELS = [];
+let CURRENT = null;
+let LAST = null;
+let DIRECTORY = new Map();
+let COORD_OWN = '';
+let ALERTS = [];
+let CAL_MONTH = null;
+let FIREBASE_OK = false;
+
+const $ = s => document.querySelector(s);
+
+/* =========================================================
+   LOGIN
+   ========================================================= */
+function getSession(){ try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); } catch(e){ return null; } }
+function setSession(u){ try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(u)); } catch(e){} }
+function clearSession(){ try { sessionStorage.removeItem(SESSION_KEY); } catch(e){} }
+
+function normalizeDni(v){
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/\s+/g, '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+}
+
+function findUserByDni(dniRaw){
+  const norm = normalizeDni(dniRaw);
+  if (!norm) return null;
+
+  for (const m of MODELS){
+    for (const r of m.rows){
+      if (normalizeDni(r.dni) === norm){
+        return { nombre: r.nombre, cargo: r.cargo || 'Coordinador', jefe: r.jefe };
+      }
+    }
+  }
+  for (const [key, entry] of DIRECTORY){
+    if (normalizeDni(key) === norm){
+      return { nombre: entry.nombre, cargo: entry.cargo || 'Coordinador', jefe: entry.jefe };
+    }
+  }
+  const digits = norm.replace(/[^0-9]/g, '');
+  if (digits.length >= 6){
+    const suffix = digits.slice(-8);
+    for (const m of MODELS){
+      for (const r of m.rows){
+        const d = String(r.dni).replace(/[^0-9]/g, '');
+        if (d && d.endsWith(suffix)){
+          return { nombre: r.nombre, cargo: r.cargo || 'Coordinador', jefe: r.jefe };
+        }
+      }
+    }
+    for (const [key, entry] of DIRECTORY){
+      const d = String(key).replace(/[^0-9]/g, '');
+      if (d && d.endsWith(suffix)){
+        return { nombre: entry.nombre, cargo: entry.cargo || 'Coordinador', jefe: entry.jefe };
+      }
+    }
+  }
+  return null;
+}
+
+function updateUserUI(){
+  const av = document.getElementById('userAvatar');
+  const nm = document.getElementById('userName');
+  const rl = document.getElementById('userRole');
+  const pn = document.getElementById('userPanelName');
+  const pr = document.getElementById('userPanelRole');
+
+  if (!USER){
+    av.textContent = '?';
+    nm.textContent = 'Invitado';
+    rl.textContent = 'Sin sesión';
+    pn.textContent = 'Invitado';
+    pr.textContent = 'Sin sesión iniciada';
+    av.style.background = 'var(--brand)';
+    return;
+  }
+  const ini = USER.nombre.split(/\s+/).filter(Boolean).slice(0,2).map(p=>p[0]).join('').toUpperCase();
+  av.textContent = ini || (USER.rol === 'admin' ? 'AD' : '?');
+  av.style.background = USER.rol === 'admin' ? 'linear-gradient(135deg,#1A1A2E,#26264A)' : 'var(--brand)';
+
+  if (USER.rol === 'admin'){
+    nm.textContent = 'Administrador';
+    rl.textContent = 'Acceso total';
+    pn.textContent = 'Administrador';
+    pr.textContent = 'Acceso total al sistema';
+  } else {
+    nm.textContent = USER.nombre;
+    rl.textContent = 'Coordinador';
+    pn.textContent = USER.nombre;
+    pr.textContent = (USER.cargo || 'Coordinador') + (USER.dni ? ' · ' + USER.dni : '');
+  }
+}
+
+function showLogin(){
+  document.getElementById('loginOverlay').classList.add('show');
+  setTimeout(() => {
+    const activeTab = document.querySelector('.login-tab.active').dataset.tab;
+    document.getElementById(activeTab === 'admin' ? 'loginUser' : 'loginDni').focus();
+  }, 200);
+}
+function hideLogin(){ document.getElementById('loginOverlay').classList.remove('show'); }
+
+function tryLogin(){
+  const activeTab = document.querySelector('.login-tab.active').dataset.tab;
+  const err = document.getElementById('loginError');
+  err.textContent = '';
+
+  if (activeTab === 'admin'){
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPass').value;
+    if (u === CREDENTIALS.admin.user && p === CREDENTIALS.admin.pass){
+      USER = { rol:'admin', nombre:'Administrador', dni:'', cargo:'' };
+      setSession(USER);
+      updateUserUI();
+      hideLogin();
+      showToast('Bienvenido, Administrador');
+      if (CURRENT) applyUserFilter();
+      updateCloudUI();
+      return;
+    }
+    err.textContent = 'Usuario o contraseña incorrectos.';
+    return;
+  }
+
+  const dniInput = document.getElementById('loginDni').value;
+  const dni = normalizeDni(dniInput);
+  if (!dni){
+    err.textContent = 'Ingresa tu número de cédula.';
+    return;
+  }
+  if (!MODELS.length){
+    USER = { rol:'coord', nombre:'Coordinador', dni, cargo:'' };
+    setSession(USER);
+    updateUserUI();
+    hideLogin();
+    showToast('Sesión iniciada · esperando datos…');
+    return;
+  }
+  const found = findUserByDni(dni);
+  if (!found){
+    err.textContent = 'No se encontró esa cédula en el archivo. Verifica el número.';
+    return;
+  }
+  USER = { rol:'coord', nombre:found.nombre, dni, cargo:found.cargo || 'Coordinador' };
+  setSession(USER);
+  updateUserUI();
+  hideLogin();
+  showToast(`Bienvenido, ${USER.nombre}`);
+  applyUserFilter();
+  updateCloudUI();
+}
+
+function applyUserFilter(){
+  if (!USER || USER.rol === 'admin') return;
+  const sel = document.getElementById('fJefe');
+  if (!sel) return;
+  const userNorm = clean(USER.nombre);
+  const matchedOpt = [...sel.options].find(o => clean(o.value) === userNorm);
+  if (matchedOpt){
+    sel.value = matchedOpt.value;
+    COORD_OWN = '';
+    render();
+    buildCoordCards();
+  } else {
+    COORD_OWN = USER.nombre;
+    sel.value = '';
+    render();
+    buildCoordCards();
+  }
+}
+
+document.querySelectorAll('.login-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const t = tab.dataset.tab;
+    document.getElementById('tabAdmin').style.display = t === 'admin' ? 'block' : 'none';
+    document.getElementById('tabCoord').style.display = t === 'coord' ? 'block' : 'none';
+    document.getElementById('loginError').textContent = '';
+  });
+});
+document.getElementById('loginBtn').addEventListener('click', tryLogin);
+document.getElementById('loginUser').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('loginPass').focus(); });
+document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key==='Enter') tryLogin(); });
+document.getElementById('loginDni').addEventListener('keydown', e => { if (e.key==='Enter') tryLogin(); });
+
+document.getElementById('userBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  document.getElementById('userPanel').classList.toggle('open');
+});
+document.addEventListener('click', e => {
+  const p = document.getElementById('userPanel');
+  if (!p.contains(e.target) && e.target.id !== 'userBtn') p.classList.remove('open');
+});
+document.getElementById('btnChangeUser').addEventListener('click', () => {
+  document.getElementById('userPanel').classList.remove('open');
+  showLogin();
+});
+document.getElementById('btnLogout').addEventListener('click', () => {
+  document.getElementById('userPanel').classList.remove('open');
+  clearSession();
+  USER = null;
+  updateUserUI();
+  showLogin();
+  showToast('Sesión cerrada');
+});
+
+/* =========================================================
+   FIREBASE
+   ========================================================= */
+function setCloudStatus(state, text, meta){
+  const dot = document.getElementById('cloudDot');
+  const txt = document.getElementById('cloudText');
+  const mt  = document.getElementById('cloudMeta');
+  const bar = document.getElementById('cloudBar');
+  if (!dot) return;
+  dot.className = 'cloud-dot ' + (state || '');
+  txt.textContent = text || '';
+  if (meta !== undefined) mt.innerHTML = meta || '';
+  bar.classList.add('on');
+}
+
+function updateCloudUI(){
+  const btnSync = document.getElementById('btnSync');
+  if (!btnSync) return;
+  // El botón "Actualizar datos" solo es útil para coordinadores (admin sube Excel)
+  btnSync.style.display = (USER && USER.rol === 'coord') ? 'inline-block' : 'none';
+}
+
+async function pushToCloud(){
+  if (!FIREBASE_OK || !window.FB){
+    setCloudStatus('err', '❌ Sin conexión a la nube');
+    showToast('Firebase no está listo');
+    return;
+  }
+  if (!MODELS.length){
+    showToast('Primero carga un Excel');
+    return;
+  }
+  setCloudStatus('sync', '⏳ Subiendo datos a la nube…');
+  try{
+    const payload = {
+      updatedAt: Date.now(),
+      uploadedBy: (USER && USER.nombre) || 'Admin',
+      models: MODELS.map(m => ({
+        sheetName: m.sheetName,
+        days: m.days,
+        metaCols: m.metaCols,
+        rows: m.rows
+      }))
+    };
+    await window.FB.setDoc(window.FB.doc(window.FB.db, 'horarios', 'actual'), payload);
+    setCloudStatus('ok', '✅ Datos publicados en la nube',
+      `<b>${MODELS.length}</b> hoja(s) · <b>${MODELS[0].rows.length}</b> personas · ${new Date().toLocaleString('es-CO')}`);
+    showToast('✅ Horarios publicados · ya los pueden ver todos');
+  } catch(err){
+    console.error(err);
+    setCloudStatus('err', '❌ Error al subir: ' + err.message);
+    showToast('Error al subir a la nube');
+  }
+}
+
+async function pullFromCloud(){
+  if (!FIREBASE_OK || !window.FB){
+    setCloudStatus('err', '❌ Sin conexión a la nube');
+    return;
+  }
+  setCloudStatus('sync', '⏳ Leyendo datos de la nube…');
+  try{
+    const snap = await window.FB.getDoc(window.FB.doc(window.FB.db, 'horarios', 'actual'));
+    if (!snap.exists()){
+      setCloudStatus('err', '⚠️ Aún no hay datos publicados',
+        'Pídele al administrador que suba el Excel y pulse <b>Publicar en la nube</b>.');
+      return;
+    }
+    const data = snap.data();
+    MODELS = data.models || [];
+    DIRECTORY = new Map(); // no viaja la BBDD, se reconstruye al leer el Excel
+
+    // Reconstruir directorio desde los propios models (por si acaso)
+    MODELS.forEach(m => m.rows.forEach(r => {
+      if (r.dni) DIRECTORY.set(r.dni, { nombre: r.nombre, jefe: r.jefe, cargo: r.cargo, categoria: r.categoria || '' });
+    }));
+
+    const firstDate = MODELS[0]?.days?.find(d => d.date)?.date;
+    if (firstDate && !CAL_MONTH) CAL_MONTH = { y: firstDate.y, m: firstDate.m };
+
+    // Refrescar UI
+    const selHoja = $('#fHoja');
+    selHoja.innerHTML = MODELS.map((m,i) => `<option value="${i}">${esc(m.sheetName)} · ${m.rows.length} personas</option>`).join('');
+    $('#panel').classList.add('on');
+    $('#coordSection').classList.add('on');
+    $('#legend').style.display = 'flex';
+    COORD_OWN = '';
+    selectModel(0);
+    computeAlerts();
+
+    if (USER && USER.rol === 'coord'){
+      const found = findUserByDni(USER.dni);
+      if (found){
+        USER.nombre = found.nombre;
+        USER.cargo = found.cargo || 'Coordinador';
+        setSession(USER);
+        updateUserUI();
+        applyUserFilter();
+      }
+    }
+
+    const upd = data.updatedAt ? new Date(data.updatedAt).toLocaleString('es-CO') : '—';
+    setCloudStatus('ok', '✅ Datos actualizados desde la nube',
+      `Subidos por <b>${esc(data.uploadedBy || 'Admin')}</b> · ${upd}`);
+  } catch(err){
+    console.error(err);
+    setCloudStatus('err', '❌ Error al leer datos: ' + err.message);
+  }
+}
+
+window.addEventListener('firebase-ready', () => {
+  FIREBASE_OK = true;
+  setCloudStatus('ok', '✅ Conectado a la nube', 'Firebase listo');
+  // Auto-cargar datos de la nube si hay sesión y no es admin
+  setTimeout(() => {
+    if (USER && USER.rol === 'coord') pullFromCloud();
+  }, 300);
+});
+
+// Botón "Actualizar datos"
+document.getElementById('btnSync').addEventListener('click', pullFromCloud);
+
+// El admin también puede forzar "publicar" tras cargar el Excel
+// (se llama desde handleFile al terminar de parsear)
+
+/* =========================================================
+   TEMAS
+   ========================================================= */
+const THEMES = [
+  { id:'abai', name:'Abai', brand:'#E5007D', dark:'#1A1A2E' },
+  { id:'ocean', name:'Ocean', brand:'#0077C8', dark:'#0A2540' },
+  { id:'emerald', name:'Emerald', brand:'#10B981', dark:'#0B2E24' },
+  { id:'sunset', name:'Sunset', brand:'#F97316', dark:'#2A1404' },
+  { id:'royal', name:'Royal', brand:'#7C3AED', dark:'#1E1B4B' },
+  { id:'crimson', name:'Crimson', brand:'#DC2626', dark:'#1C0A0A' },
+  { id:'cyan', name:'Cyan', brand:'#06B6D4', dark:'#062A33' },
+  { id:'graphite', name:'Graphite', brand:'#334155', dark:'#0F172A' }
+];
+const THEME_KEY = 'le_horarios_theme';
+
+function renderSwatches(){
+  const cont = document.getElementById('themeSwatches');
+  cont.innerHTML = THEMES.map(t => `
+    <button class="swatch" data-theme-id="${t.id}" title="Tema ${t.name}">
+      <span class="circle" style="background:linear-gradient(135deg,${t.brand} 0%,${t.dark} 100%)"></span>
+      <span>${t.name}</span>
+    </button>`).join('');
+  cont.querySelectorAll('.swatch').forEach(btn => {
+    btn.addEventListener('click', () => applyTheme(btn.dataset.themeId, true));
+  });
+}
+function applyTheme(id, showFeedback){
+  if (!THEMES.find(t => t.id === id)) id = 'abai';
+  document.documentElement.setAttribute('data-theme', id);
+  try { localStorage.setItem(THEME_KEY, id); } catch(e){}
+  document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('active', s.dataset.themeId === id));
+  if (showFeedback){
+    const t = THEMES.find(x => x.id === id);
+    showToast(`Tema "${t.name}" aplicado`);
+  }
+}
+function loadTheme(){
+  let saved = 'abai';
+  try { saved = localStorage.getItem(THEME_KEY) || 'abai'; } catch(e){}
+  applyTheme(saved, false);
+}
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+const themeBtn = document.getElementById('themeBtn');
+const themePanel = document.getElementById('themePanel');
+themeBtn.addEventListener('click', e => { e.stopPropagation(); themePanel.classList.toggle('open'); });
+document.addEventListener('click', e => { if (!themePanel.contains(e.target) && e.target !== themeBtn) themePanel.classList.remove('open'); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){
+    themePanel.classList.remove('open');
+    document.getElementById('userPanel').classList.remove('open');
+  }
+});
+
+/* =========================================================
+   UTILIDADES
+   ========================================================= */
+function normStr(v){
+  if (v === null || v === undefined) return '';
+  if (v instanceof Date) return '';
+  if (typeof v === 'object') return normStr(v.w ?? v.v ?? '');
+  return String(v).replace(/\s+/g,' ').trim();
+}
+const clean = v => normStr(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad2 = n => String(n).padStart(2,'0');
+
+function dateInfo(v){
+  if (!(v instanceof Date)) return null;
+  let y,m,d;
+  if (v.getHours()===0 && v.getMinutes()===0 && v.getSeconds()===0){ y=v.getFullYear(); m=v.getMonth()+1; d=v.getDate(); }
+  else if (v.getUTCHours()===0 && v.getUTCMinutes()===0 && v.getUTCSeconds()===0){ y=v.getUTCFullYear(); m=v.getUTCMonth()+1; d=v.getUTCDate(); }
+  else { y=v.getFullYear(); m=v.getMonth()+1; d=v.getDate(); }
+  return {y,m,d};
+}
+const DAY_LETTERS = ['D','L','M','X','J','V','S'];
+const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DOW_NAMES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+
+function isoWeek(di){
+  const d = new Date(Date.UTC(di.y, di.m-1, di.d));
+  const dayNum = (d.getUTCDay()+6)%7;
+  d.setUTCDate(d.getUTCDate()-dayNum+3);
+  const firstThu = new Date(Date.UTC(d.getUTCFullYear(),0,4));
+  const fDay = (firstThu.getUTCDay()+6)%7;
+  firstThu.setUTCDate(firstThu.getUTCDate()-fDay+3);
+  return 1 + Math.round((d - firstThu)/(7*86400000));
+}
+
+function parseShiftHours(code){
+  const s = normStr(code);
+  if (!s || !/\d/.test(s)) return 0;
+  let total = 0;
+  for (const block of s.split('_')){
+    const m = block.trim().match(/^(\d{1,2}):(\d{2})\s*\.\s*(\d{1,2}):(\d{2})$/);
+    if (!m) continue;
+    const ini = (+m[1])*60 + (+m[2]);
+    let fin  = (+m[3])*60 + (+m[4]);
+    if (fin < ini) fin += 24*60;
+    total += (fin - ini)/60;
+  }
+  return total;
+}
+const fmtH = h => (!h ? '' : (Number.isInteger(h) ? h : h.toFixed(1)) + 'h');
+
+const AVATAR_COLORS = ['#E5007D','#1A1A2E','#B3005F','#6B5B95','#E85A4F','#3498DB','#16A085','#D35400'];
+function colorFor(name){
+  let h = 0;
+  for (let i=0;i<name.length;i++) h = (h*31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+function initials(name){
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  if (parts.length === 1) return parts[0].slice(0,2).toUpperCase();
+  return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+}
+function metaClass(mc){
+  const l = clean(mc.label);
+  if (l === 'MODO') return 'col-modo';
+  if (l === 'CONTRATO') return 'col-contrato';
+  return '';
+}
+
+/* =========================================================
+   PARSEO
+   ========================================================= */
+function buildDirectory(wb){
+  const map = new Map();
+  for (const name of wb.SheetNames){
+    const grid = XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1, raw:true, defval:null, blankrows:true});
+    if (!grid.length) continue;
+    const head = (grid[0]||[]).map(clean);
+    const iCed = head.findIndex(h => h === 'CEDULA' || h === 'DNI');
+    const iNom = head.findIndex(h => h.startsWith('NOMBRE'));
+    const iJef = head.findIndex(h => h.includes('JEFE INMEDIATO'));
+    const iCar = head.findIndex(h => h === 'CARGO');
+    const iCat = head.findIndex(h => h === 'CATEGORIA');
+    if (iCed < 0 || iNom < 0) continue;
+    for (let r=1; r<grid.length; r++){
+      const row = grid[r] || [];
+      let dni = row[iCed];
+      dni = (typeof dni === 'number') ? String(Math.round(dni)) : normStr(dni);
+      if (!dni) continue;
+      map.set(dni, {
+        nombre: normStr(row[iNom]),
+        jefe: iJef >= 0 ? normStr(row[iJef]) : '',
+        cargo: iCar >= 0 ? normStr(row[iCar]) : '',
+        categoria: iCat >= 0 ? normStr(row[iCat]) : ''
+      });
+    }
+  }
+  return map;
+}
+
+function parseSheet(ws, sheetName, directory){
+  const grid = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null, blankrows:true});
+  if (!grid || grid.length < 3) return null;
+
+  let headerRow = -1, nameCol = -1;
+  const lim = Math.min(grid.length, 60);
+  for (let r=0; r<lim && headerRow<0; r++){
+    const row = grid[r] || [];
+    for (let c=row.length-1; c>=0; c--){
+      const v = clean(row[c]);
+      if (v === 'NOMBRE' || v === 'NOMBRE COMPLETO'){ headerRow = r; nameCol = c; break; }
+    }
+  }
+  if (headerRow < 0) return null;
+
+  let dniCol = -1;
+  for (let c=nameCol-1; c>=0; c--){
+    const v = clean((grid[headerRow]||[])[c]);
+    if (v === 'DNI' || v === 'CEDULA'){ dniCol = c; break; }
+  }
+  if (dniCol < 0) return null;
+
+  let jefeCol = -1;
+  const hrow = grid[headerRow] || [];
+  for (let c=nameCol+1; c<hrow.length; c++){
+    if (clean(hrow[c]).includes('JEFE')){ jefeCol = c; break; }
+  }
+
+  let dateRow = -1, best = 0;
+  for (let r=0; r<headerRow; r++){
+    const cnt = (grid[r]||[]).filter(v => v instanceof Date).length;
+    if (cnt > best){ best = cnt; dateRow = r; }
+  }
+  if (best < 5) return null;
+
+  const drow = grid[dateRow] || [];
+  const dayCols = [];
+  for (let c=0; c<drow.length; c++) if (drow[c] instanceof Date) dayCols.push(c);
+  if (dayCols.length < 5) return null;
+
+  const weekOf = {};
+  dayCols.forEach(c => {
+    let wk = null;
+    for (let r=headerRow-1; r>=0; r--){
+      const v = (grid[r]||[])[c];
+      if (typeof v === 'number' && v >= 1 && v <= 53){ wk = Math.round(v); break; }
+    }
+    weekOf[c] = wk;
+  });
+
+  const days = dayCols.map(c => {
+    const di = dateInfo(drow[c]);
+    let week = weekOf[c];
+    if (week == null && di) week = isoWeek(di);
+    let letter = normStr(hrow[c]).toUpperCase();
+    if (!letter && di) letter = DAY_LETTERS[new Date(Date.UTC(di.y, di.m-1, di.d)).getUTCDay()];
+    return { col:c, date:di, week, letter };
+  });
+
+  const metaCols = [];
+  const top = (jefeCol >= 0 ? jefeCol : nameCol);
+  for (let c=0; c<=top; c++){
+    if (c === nameCol || c === dniCol || c === jefeCol) continue;
+    const label = normStr(hrow[c]);
+    if (!label || /^0$/.test(label)) continue;
+    if (clean(label) === 'DNI' || clean(label) === 'CEDULA') continue;
+    metaCols.push({ col:c, label });
+  }
+
+  const rows = [];
+  const seen = new Set();
+  for (let r=headerRow+1; r<grid.length; r++){
+    const row = grid[r] || [];
+    const nombre = normStr(row[nameCol]);
+    if (!nombre) continue;
+
+    let dni = row[dniCol];
+    dni = (typeof dni === 'number') ? String(Math.round(dni)) : normStr(dni);
+    const key = dni + '|' + nombre;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    let jefe = jefeCol >= 0 ? normStr(row[jefeCol]) : '';
+    const dir = directory.get(dni);
+    if ((!jefe || jefe === '#N/A') && dir) jefe = dir.jefe;
+    if (!jefe || jefe === '#N/A') jefe = '(Sin jefe asignado)';
+
+    const meta = {};
+    metaCols.forEach(m => meta[m.label] = normStr(row[m.col]));
+
+    const shifts = days.map(d => normStr(row[d.col]));
+    const hours  = shifts.map(s => parseShiftHours(s));
+
+    rows.push({
+      dni, nombre, jefe, meta, shifts, hours,
+      cargo: dir ? dir.cargo : '',
+      categoria: dir ? dir.categoria : ''
+    });
+  }
+
+  if (!rows.length) return null;
+  return { sheetName, days, metaCols, rows };
+}
+
+/* =========================================================
+   CARGA
+   ========================================================= */
+const dz = $('#dropzone'), fileInput = $('#fileInput'), statusEl = $('#status');
+function setStatus(msg, isErr){
+  statusEl.textContent = msg;
+  statusEl.classList.remove('err','ok');
+  if (isErr === true) statusEl.classList.add('err');
+  else if (isErr === 'ok') statusEl.classList.add('ok');
+}
+
+dz.addEventListener('click', () => { if (typeof XLSX !== 'undefined') fileInput.click(); });
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
+dz.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+async function handleFile(file){
+  if (typeof XLSX === 'undefined'){
+    setStatus('❌ La librería Excel no está cargada. Recarga la página.', true);
+    return;
+  }
+  try{
+    setStatus('⏳ Leyendo ' + file.name + ' …');
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array', cellDates:true });
+
+    DIRECTORY = buildDirectory(wb);
+    MODELS = [];
+    wb.SheetNames.forEach(n => {
+      const m = parseSheet(wb.Sheets[n], n, DIRECTORY);
+      if (m) MODELS.push(m);
+    });
+
+    if (!MODELS.length){
+      setStatus('❌ No se encontró ninguna hoja con formato de horario.', true);
+      $('#panel').classList.remove('on');
+      $('#coordSection').classList.remove('on');
+      $('#alertPanel').classList.remove('on');
+      return;
+    }
+
+    const selHoja = $('#fHoja');
+    selHoja.innerHTML = MODELS.map((m,i) => `<option value="${i}">${esc(m.sheetName)} · ${m.rows.length} personas</option>`).join('');
+
+    $('#panel').classList.add('on');
+    $('#coordSection').classList.add('on');
+    $('#legend').style.display = 'flex';
+
+    const totalPersonas = MODELS[0].rows.length;
+    const totalCoords = new Set(MODELS[0].rows.map(r=>r.jefe)).size;
+    $('#headerBadge').innerHTML = `<b>${totalPersonas}</b>colaboradores · ${totalCoords} coordinadores`;
+
+    COORD_OWN = '';
+    selectModel(0);
+    computeAlerts();
+
+    if (USER && USER.rol === 'coord' && !USER.cargo){
+      const found = findUserByDni(USER.dni);
+      if (found){
+        USER.nombre = found.nombre;
+        USER.cargo = found.cargo || 'Coordinador';
+        setSession(USER);
+        updateUserUI();
+        applyUserFilter();
+        showToast(`Bienvenido, ${USER.nombre}`);
+      } else {
+        showToast('Tu cédula no aparece en este archivo');
+      }
+    }
+
+    const firstDate = MODELS[0].days.find(d => d.date)?.date;
+    if (firstDate) CAL_MONTH = { y: firstDate.y, m: firstDate.m };
+
+    setStatus(`✅ ${file.name} cargado · ${MODELS.length} hoja(s) · ${DIRECTORY.size} registros.`, 'ok');
+
+    // Admin: subir automáticamente a la nube
+    if (USER && USER.rol === 'admin' && FIREBASE_OK){
+      await pushToCloud();
+    }
+  } catch(err){
+    console.error(err);
+    setStatus('❌ Error al leer el archivo: ' + err.message, true);
+  }
+}
+
+/* =========================================================
+   ALERTAS
+   ========================================================= */
+function computeAlerts(){
+  ALERTS = [];
+  if (!CURRENT) return;
+  const { rows, days } = CURRENT;
+  const weeks = [...new Set(days.map(d => d.week).filter(w => w != null))];
+
+  rows.forEach(r => {
+    weeks.forEach(w => {
+      let h = 0;
+      days.forEach((d, i) => { if (d.week === w) h += r.hours[i]; });
+      if (h > 48){
+        ALERTS.push({ sev:'crit', icon:'🔥', msg:`<b>${esc(r.nombre)}</b> acumula <b>${h.toFixed(1)}h</b> en la semana ${w} (supera 48h).` });
+      } else if (h > 44){
+        ALERTS.push({ sev:'warn', icon:'⚠️', msg:`<b>${esc(r.nombre)}</b> tiene <b>${h.toFixed(1)}h</b> en la semana ${w}.` });
+      }
+    });
+  });
+
+  rows.forEach(r => {
+    let racha = 0;
+    days.forEach((d, i) => {
+      if (r.hours[i] > 0){
+        racha++;
+        if (racha === 6) ALERTS.push({ sev:'warn', icon:'📆', msg:`<b>${esc(r.nombre)}</b> lleva <b>6+ días seguidos</b> trabajando hasta ${esc(d.letter)} ${d.date ? pad2(d.date.d)+'/'+pad2(d.date.m) : ''}.` });
+      } else racha = 0;
+    });
+  });
+
+  rows.forEach(r => {
+    let racha = 0, startIdx = -1;
+    days.forEach((d, i) => {
+      if (r.hours[i] === 0 && r.shifts[i] === ''){
+        if (racha === 0) startIdx = i;
+        racha++;
+        if (racha === 5){
+          const dEnd = days[i];
+          ALERTS.push({ sev:'info', icon:'🔍', msg:`<b>${esc(r.nombre)}</b> sin turno <b>5+ días</b> (${days[startIdx].date ? pad2(days[startIdx].date.d)+'/'+pad2(days[startIdx].date.m) : '?'} → ${dEnd.date ? pad2(dEnd.date.d)+'/'+pad2(dEnd.date.m) : '?'}).` });
+        }
+      } else racha = 0;
+    });
+  });
+
+  renderAlerts();
+}
+
+function renderAlerts(){
+  const panel = document.getElementById('alertPanel');
+  const body  = document.getElementById('alertBody');
+  const count = document.getElementById('alertCount');
+  count.textContent = ALERTS.length;
+  if (!ALERTS.length){ panel.classList.remove('on'); return; }
+  panel.classList.add('on');
+  const order = { crit:0, warn:1, info:2 };
+  const sorted = [...ALERTS].sort((a,b) => order[a.sev] - order[b.sev]);
+  body.innerHTML = sorted.map(a => `<div class="alert-item ${a.sev}"><span class="alert-icon">${a.icon}</span><span>${a.msg}</span></div>`).join('');
+}
+
+document.getElementById('alertHead').addEventListener('click', () => {
+  document.getElementById('alertHead').classList.toggle('collapsed');
+  document.getElementById('alertBody').classList.toggle('collapsed');
+});
+
+/* =========================================================
+   COORDINADORES
+   ========================================================= */
+function buildCoordCards(){
+  const m = CURRENT;
+  if (!m) return;
+  const isCoord = USER && USER.rol === 'coord';
+  const nombres = new Set(m.rows.map(r => r.jefe).filter(j => j && j !== '(Sin jefe asignado)'));
+  m.rows.forEach(r => { if (/coordinador/i.test(r.cargo)) nombres.add(r.nombre); });
+  let lista = [...nombres].sort((a,b)=>a.localeCompare(b,'es'));
+  if (isCoord) lista = lista.filter(n => clean(n) === clean(USER.nombre));
+
+  const totalEquipo = m.rows.length;
+  let html = '';
+  if (!isCoord){
+    html += `<div class="coord-card ${!COORD_OWN && !$('#fJefe').value ? 'active':''}" data-coord="" data-own=""><div class="coord-top"><div class="avatar" style="background:linear-gradient(135deg,#1A1A2E,#26264A)">👥</div><div><div class="coord-name">Todos los equipos</div><div class="coord-cargo">Sin filtro</div></div></div><div class="coord-stats"><span class="coord-tag pink">${totalEquipo} personas</span></div></div>`;
+  }
+  lista.forEach(nombre => {
+    const equipo = m.rows.filter(r => r.jefe === nombre);
+    const propioRow = m.rows.find(r => clean(r.nombre) === clean(nombre));
+    const cargo = propioRow?.cargo || 'Coordinador';
+    const isActive = (COORD_OWN && clean(nombre) === clean(COORD_OWN)) || ($('#fJefe').value && clean($('#fJefe').value) === clean(nombre));
+    const color = colorFor(nombre);
+    html += `<div class="coord-card ${isActive?'active':''}" data-coord="${esc(nombre)}" data-own=""><div class="coord-top"><div class="avatar" style="background:${color}">${initials(nombre)}</div><div style="min-width:0"><div class="coord-name">${esc(nombre)}</div><div class="coord-cargo">${esc(cargo)}</div></div></div><div class="coord-stats"><span class="coord-tag pink">${equipo.length} en equipo</span>${propioRow ? `<span class="coord-tag" data-own="${esc(nombre)}" style="cursor:pointer;background:#1A1A2E;color:#fff">Ver su horario</span>` : ''}</div></div>`;
+  });
+  $('#coordGrid').innerHTML = html;
+
+  $('#coordGrid').querySelectorAll('.coord-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.dataset.own !== undefined && e.target.dataset.own){
+        COORD_OWN = e.target.dataset.own;
+        $('#fJefe').value = '';
+        render();
+        buildCoordCards();
+        return;
+      }
+      const c = card.dataset.coord;
+      COORD_OWN = '';
+      $('#fJefe').value = c;
+      render();
+      buildCoordCards();
+    });
+  });
+}
+
+function selectModel(i){
+  CURRENT = MODELS[i];
+  COORD_OWN = '';
+  const jefes = [...new Set(CURRENT.rows.map(r => r.jefe))].sort((a,b)=>a.localeCompare(b,'es'));
+  let opts = '<option value="">— Todos los jefes —</option>';
+  if (USER && USER.rol === 'coord'){
+    const matched = jefes.find(j => clean(j) === clean(USER.nombre));
+    opts = matched
+      ? `<option value="${esc(matched)}">${esc(matched)} (mi equipo)</option>`
+      : '<option value="">— Mi horario —</option>';
+  } else {
+    opts += jefes.map(j => `<option value="${esc(j)}">${esc(j)} (${CURRENT.rows.filter(r=>r.jefe===j).length})</option>`).join('');
+  }
+  $('#fJefe').innerHTML = opts;
+  const semanas = [...new Set(CURRENT.days.map(d => d.week).filter(w => w != null))].sort((a,b) => a-b);
+  $('#fSemana').innerHTML = '<option value="">— Todas las semanas —</option>' + semanas.map(w => `<option value="${w}">Semana ${w}</option>`).join('');
+  updateCompareSelects();
+  buildCoordCards();
+  render();
+}
+
+function updateCompareSelects(){
+  if (!CURRENT) return;
+  const semanas = [...new Set(CURRENT.days.map(d => d.week).filter(w => w != null))].sort((a,b)=>a-b);
+  const opts = semanas.map(w => `<option value="${w}">Semana ${w}</option>`).join('');
+  const selA = document.getElementById('cmpWeekA');
+  const selB = document.getElementById('cmpWeekB');
+  if (selA) selA.innerHTML = opts;
+  if (selB){ selB.innerHTML = opts; if (semanas.length > 1) selB.value = semanas[1]; }
+}
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+['fHoja','fJefe','fSemana','fVista'].forEach(id =>
+  document.getElementById(id).addEventListener('change', e => {
+    if (id === 'fHoja'){ selectModel(+e.target.value); return; }
+    if (id === 'fJefe') COORD_OWN = '';
+    if (id === 'fVista' && e.target.value === 'calendario') initCalendarMonth();
+    render();
+    if (id === 'fJefe') buildCoordCards();
+  })
+);
+$('#fBuscar').addEventListener('input', render);
+$('#fSoloHoras').addEventListener('change', render);
+$('#fHideDni').addEventListener('change', render);
+$('#fHideMeta').addEventListener('change', render);
+$('#fHideTot').addEventListener('change', render);
+
+function render(){
+  const m = CURRENT;
+  const out = $('#out');
+  const banner = $('#ownBanner');
+  if (!m){ out.innerHTML = ''; banner.innerHTML = ''; return; }
+
+  const jefeSel = $('#fJefe').value;
+  const weekSel = $('#fSemana').value;
+  const q = $('#fBuscar').value.trim().toLowerCase();
+  const vista = $('#fVista').value;
+  const soloHoras = $('#fSoloHoras').checked;
+  const hideDni = $('#fHideDni').checked;
+  const hideMeta = $('#fHideMeta').checked;
+  const hideTot = $('#fHideTot').checked;
+
+  if (COORD_OWN){
+    banner.innerHTML = `<div class="own-banner">👤 Viendo el <b>horario propio</b> de ${esc(COORD_OWN)}<button id="btnClearOwn">✕ Quitar filtro</button></div>`;
+    $('#btnClearOwn').addEventListener('click', () => { COORD_OWN = ''; render(); buildCoordCards(); });
+  } else banner.innerHTML = '';
+
+  let dayIdx = m.days.map((d,i) => i);
+  if (weekSel) dayIdx = dayIdx.filter(i => String(m.days[i].week) === weekSel);
+
+  const rows = m.rows.filter(r => {
+    if (COORD_OWN) return clean(r.nombre) === clean(COORD_OWN);
+    if (USER && USER.rol === 'coord' && !jefeSel && !COORD_OWN){
+      return clean(r.jefe) === clean(USER.nombre) || clean(r.nombre) === clean(USER.nombre);
+    }
+    if (jefeSel && r.jefe !== jefeSel) return false;
+    if (q && !(r.nombre.toLowerCase().includes(q) || r.dni.includes(q))) return false;
+    return true;
+  });
+
+  let totalH = 0;
+  rows.forEach(r => dayIdx.forEach(i => totalH += r.hours[i]));
+  const nJefes = new Set(rows.map(r => r.jefe)).size;
+
+  $('#stats').innerHTML = `
+    <div class="stat">Empleados<b>${rows.length}</b></div>
+    <div class="stat">Jefes inmediatos<b>${nJefes}</b></div>
+    <div class="stat">Días mostrados<b>${dayIdx.length}</b></div>
+    <div class="stat">Horas totales<b>${totalH % 1 ? totalH.toFixed(1) : totalH} h</b></div>
+  `;
+
+  if (!rows.length){
+    out.innerHTML = '<div class="empty-msg">🔍 No hay resultados con los filtros seleccionados.</div>';
+    LAST = null;
+    return;
+  }
+  LAST = { rows, metaCols: m.metaCols, days: dayIdx.map(i => ({ ...m.days[i], idx:i })) };
+
+  if (vista === 'calendario'){ out.innerHTML = renderCalendarView(rows, dayIdx); bindCalendarNav(); return; }
+  if (vista === 'comparar'){ out.innerHTML = renderCompareView(rows, m); bindCompareEvents(); return; }
+
+  const grupos = new Map();
+  rows.forEach(r => { if (!grupos.has(r.jefe)) grupos.set(r.jefe, []); grupos.get(r.jefe).push(r); });
+
+  let html = '';
+  for (const [jefe, lista] of grupos){
+    let gh = 0;
+    lista.forEach(r => dayIdx.forEach(i => gh += r.hours[i]));
+    const jefeCargo = lista.find(r=>r.jefe===jefe)?.cargo || '';
+    html += `<section class="group"><div class="group-head"><h3>👤 ${esc(jefe)}</h3>${jefeCargo ? `<span class="pill">${esc(jefeCargo)}</span>` : ''}<span class="pill">${lista.length} persona${lista.length!==1?'s':''}</span><span class="pill g">${gh % 1 ? gh.toFixed(1) : gh} h en el rango</span></div><div class="table-wrap ${hideDni?'hide-dni':''} ${hideMeta?'hide-meta':''} ${hideTot?'hide-tot':''}">`;
+    html += (vista === 'detalle') ? tablaDetalle(lista, dayIdx, m, soloHoras) : tablaResumen(lista, dayIdx, m);
+    html += `</div></section>`;
+  }
+  out.innerHTML = html;
+}
+
+/* =========================================================
+   CALENDARIO
+   ========================================================= */
+function initCalendarMonth(){
+  if (CAL_MONTH) return;
+  if (!CURRENT) return;
+  const firstDate = CURRENT.days.find(d => d.date)?.date;
+  if (firstDate) CAL_MONTH = { y: firstDate.y, m: firstDate.m };
+}
+
+function renderCalendarView(rows, dayIdx){
+  const days = dayIdx.map(i => CURRENT.days[i]);
+  if (!CAL_MONTH){
+    const first = days.find(d => d.date);
+    if (first) CAL_MONTH = { y: first.date.y, m: first.date.m };
+  }
+  const { y, m } = CAL_MONTH;
+  const totalDias = new Date(y, m, 0).getDate();
+  const primerDow = new Date(y, m-1, 1).getDay();
+  const offset = (primerDow + 6) % 7;
+
+  const dayMap = {};
+  days.forEach((d, k) => { if (d.date && d.date.y === y && d.date.m === m) dayMap[d.date.d] = { idx: d.col, k }; });
+
+  const single = rows.length === 1;
+  const person = single ? rows[0] : null;
+
+  let cells = '';
+  for (let i=0; i<offset; i++) cells += `<div class="cal-day empty"></div>`;
+  for (let d=1; d<=totalDias; d++){
+    const info = dayMap[d];
+    if (!info){
+      cells += `<div class="cal-day"><div class="cal-day-num">${d}</div><div class="cal-empty-msg" style="font-size:10px;padding:0;color:#cbd5e1">Sin datos</div></div>`;
+      continue;
+    }
+    if (single){
+      const raw = person.shifts[info.idx] || '';
+      const h = person.hours[info.idx];
+      const isWork = h > 0;
+      const pretty = raw ? raw.split('_').map(p => p.replace(/\./g,'–')).join(' + ') : '';
+      cells += `<div class="cal-day ${isWork?'':'off'}"><div class="cal-day-num">${d}</div>${isWork ? `<span class="cal-shift" title="${esc(raw)}">${esc(pretty)}</span>` : `<span class="cal-shift off">${esc(raw || '—')}</span>`}</div>`;
+    } else {
+      let trabajan = 0, libres = 0, totalHrs = 0;
+      rows.forEach(r => { if (r.hours[info.idx] > 0){ trabajan++; totalHrs += r.hours[info.idx]; } else libres++; });
+      const pct = Math.min(100, Math.round((trabajan / rows.length) * 100));
+      cells += `<div class="cal-day"><div class="cal-day-num">${d}<small>${rows.length}</small></div><div class="cal-day-stat"><b>${trabajan}</b> trabajan<br>${libres} libres<br><b>${totalHrs.toFixed(1)}h</b> totales</div><div class="cal-bar"><div class="cal-bar-fill" style="width:${pct}%"></div></div></div>`;
+    }
+  }
+
+  return `<div class="cal-container"><div class="cal-header"><div class="cal-title">${MONTH_NAMES[m-1]} ${y}</div><div class="cal-nav"><button id="calPrev">◀ Anterior</button><button id="calNext">Siguiente ▶</button></div></div><div class="cal-grid">${DOW_NAMES.map(d => `<div class="cal-dow">${d.slice(0,3)}</div>`).join('')}${cells}</div><div class="cal-empty-msg">${single ? `Mostrando el horario de <b>${esc(person.nombre)}</b>` : `Mostrando <b>${rows.length}</b> personas · barra = % de personas trabajando ese día`}</div></div>`;
+}
+
+function bindCalendarNav(){
+  const prev = document.getElementById('calPrev');
+  const next = document.getElementById('calNext');
+  if (prev) prev.addEventListener('click', () => { CAL_MONTH.m--; if (CAL_MONTH.m < 1){ CAL_MONTH.m = 12; CAL_MONTH.y--; } render(); });
+  if (next) next.addEventListener('click', () => { CAL_MONTH.m++; if (CAL_MONTH.m > 12){ CAL_MONTH.m = 1; CAL_MONTH.y++; } render(); });
+}
+
+/* =========================================================
+   COMPARAR SEMANAS
+   ========================================================= */
+function renderCompareView(rows, m){
+  const semanas = [...new Set(m.days.map(d => d.week).filter(w => w != null))].sort((a,b)=>a-b);
+  if (semanas.length < 1) return '<div class="empty-msg">No hay semanas disponibles para comparar.</div>';
+  const wA = semanas[0];
+  const wB = semanas[1] !== undefined ? semanas[1] : semanas[0];
+  const html = `<div class="cmp-container"><div class="cmp-controls"><div class="field"><label for="cmpWeekA">Semana A</label><select id="cmpWeekA">${semanas.map(w => `<option value="${w}" ${w===wA?'selected':''}>Semana ${w}</option>`).join('')}</select></div><div class="cmp-vs">vs</div><div class="field"><label for="cmpWeekB">Semana B</label><select id="cmpWeekB">${semanas.map(w => `<option value="${w}" ${w===wB?'selected':''}>Semana ${w}</option>`).join('')}</select></div></div><div class="cmp-legend"><span><span class="cmp-dot up"></span> Aumentó</span><span><span class="cmp-dot down"></span> Disminuyó</span><span><span class="cmp-dot same"></span> Sin cambios</span></div><div id="cmpResult"></div></div>`;
+  setTimeout(() => computeCompare(rows, m), 0);
+  return html;
+}
+
+function computeCompare(rows, m){
+  const wA = +document.getElementById('cmpWeekA').value;
+  const wB = +document.getElementById('cmpWeekB').value;
+  const idxByWeek = w => m.days.map((d,i) => d.week === w ? i : -1).filter(i => i >= 0);
+  const idxA = idxByWeek(wA);
+  const idxB = idxByWeek(wB);
+  const body = rows.map(r => {
+    let hA = 0, hB = 0, dA = 0, dB = 0;
+    idxA.forEach(i => { if (r.hours[i] > 0){ hA += r.hours[i]; dA++; } });
+    idxB.forEach(i => { if (r.hours[i] > 0){ hB += r.hours[i]; dB++; } });
+    const diffH = hB - hA, diffD = dB - dA;
+    const cls = diffH > 0 ? 'diff-up' : diffH < 0 ? 'diff-down' : 'diff-same';
+    const sign = diffH > 0 ? '+' : '';
+    const clsD = diffD > 0 ? 'diff-up' : diffD < 0 ? 'diff-down' : 'diff-same';
+    const signD = diffD > 0 ? '+' : '';
+    return `<tr><td class="c-dni">${esc(r.dni)}</td><td class="c-nom">${esc(r.nombre)}</td><td>${hA > 0 ? hA.toFixed(1)+'h' : '—'}</td><td>${hB > 0 ? hB.toFixed(1)+'h' : '—'}</td><td class="${cls}">${sign}${diffH.toFixed(1)}h</td><td>${dA}</td><td>${dB}</td><td class="${clsD}">${signD}${diffD}</td></tr>`;
+  }).join('');
+  let totA = 0, totB = 0;
+  rows.forEach(r => { idxA.forEach(i => totA += r.hours[i]); idxB.forEach(i => totB += r.hours[i]); });
+  const diffTot = totB - totA;
+  const clsTot = diffTot > 0 ? 'diff-up' : diffTot < 0 ? 'diff-down' : 'diff-same';
+  const signTot = diffTot > 0 ? '+' : '';
+  const html = `<div class="table-wrap"><table><thead><tr><th class="c-dni">DNI</th><th class="c-nom">Nombre</th><th class="week">Sem ${wA}</th><th class="week">Sem ${wB}</th><th>Δ Horas</th><th class="week">Días ${wA}</th><th class="week">Días ${wB}</th><th>Δ Días</th></tr></thead><tbody>${body}</tbody><tfoot><tr><td></td><td style="text-align:left">TOTAL</td><td>${totA.toFixed(1)}h</td><td>${totB.toFixed(1)}h</td><td class="${clsTot}">${signTot}${diffTot.toFixed(1)}h</td><td colspan="3"></td></tr></tfoot></table></div>`;
+  const cont = document.getElementById('cmpResult');
+  if (cont) cont.innerHTML = html;
+}
+
+function bindCompareEvents(){
+  const selA = document.getElementById('cmpWeekA');
+  const selB = document.getElementById('cmpWeekB');
+  if (!selA || !selB) return;
+  selA.addEventListener('change', () => computeCompare(LAST?.rows || [], CURRENT));
+  selB.addEventListener('change', () => computeCompare(LAST?.rows || [], CURRENT));
+}
+
+/* =========================================================
+   TABLAS
+   ========================================================= */
+function tablaDetalle(lista, dayIdx, m, soloHoras){
+  const days = dayIdx.map(i => m.days[i]);
+  const wgroups = [];
+  days.forEach((d, k) => {
+    const w = d.week ?? '?';
+    const last = wgroups[wgroups.length-1];
+    if (last && last.week === w) last.items.push(k);
+    else wgroups.push({ week:w, items:[k] });
+  });
+  let h1 = '<tr><th class="c-idx" rowspan="2">#</th><th class="c-dni" rowspan="2">DNI</th><th class="c-nom" rowspan="2">Nombre</th>';
+  m.metaCols.forEach(mc => h1 += `<th rowspan="2" class="${metaClass(mc)}">${esc(mc.label)}</th>`);
+  wgroups.forEach(g => h1 += `<th class="week" colspan="${g.items.length}">SEMANA ${g.week}</th>`);
+  h1 += '<th class="c-tot" rowspan="2">Total</th></tr>';
+  let h2 = '<tr>';
+  days.forEach(d => { const f = d.date ? `${pad2(d.date.d)}/${pad2(d.date.m)}` : ''; h2 += `<th class="day">${esc(d.letter)}<span>${f}</span></th>`; });
+  h2 += '</tr>';
+  let body = '';
+  lista.forEach((r, idx) => {
+    const isOwn = COORD_OWN && clean(r.nombre) === clean(COORD_OWN);
+    let tr = `<tr${isOwn?' style="background:var(--brand-soft)"':''}><td class="c-idx">${idx+1}</td><td class="c-dni">${esc(r.dni)}</td><td class="c-nom" title="${esc(r.nombre)}">${esc(r.nombre)}${isOwn?' ⭐':''}</td>`;
+    m.metaCols.forEach(mc => tr += `<td class="meta ${metaClass(mc)}" title="${esc(r.meta[mc.label]||'')}">${esc(r.meta[mc.label]||'')}</td>`);
+    let tot = 0;
+    dayIdx.forEach(i => { const raw = r.shifts[i] || ''; const h = r.hours[i]; tot += h; tr += celda(raw, h, soloHoras); });
+    tr += `<td class="tot">${fmtH(tot) || '0h'}</td></tr>`;
+    body += tr;
+  });
+  let foot = '<tfoot><tr><td class="c-idx"></td><td class="c-dni"></td><td class="c-nom">TOTAL DÍA</td>';
+  m.metaCols.forEach(mc => foot += `<td class="${metaClass(mc)}"></td>`);
+  let gt = 0;
+  dayIdx.forEach(i => { let s = 0; lista.forEach(r => s += r.hours[i]); gt += s; foot += `<td>${fmtH(s) || '0'}</td>`; });
+  foot += `<td class="tot">${fmtH(gt) || '0h'}</td></tr></tfoot>`;
+  return `<table><thead>${h1}${h2}</thead><tbody>${body}</tbody>${foot}</table>`;
+}
+
+function celda(raw, h, soloHoras){
+  const s = normStr(raw);
+  if (!s) return '<td class="dc empty"></td>';
+  if (soloHoras){
+    if (h > 0) return `<td class="dc work" title="${esc(s)}"><span class="code">${fmtH(h)}</span></td>`;
+    return `<td class="dc off" title="${esc(s)}"><span class="offcode">${esc(s)}</span></td>`;
+  }
+  if (h <= 0) return `<td class="dc off" title="${esc(s)}"><span class="offcode">${esc(s)}</span></td>`;
+  const pretty = s.split('_').map(p => p.replace(/\./g,'–')).join(' + ');
+  return `<td class="dc work" title="${esc(s)}"><span class="code">${esc(pretty)}</span></td>`;
+}
+
+function tablaResumen(lista, dayIdx, m){
+  const weeks = [...new Set(dayIdx.map(i => m.days[i].week))].sort((a,b)=>a-b);
+  const idxByWeek = {};
+  weeks.forEach(w => idxByWeek[w] = dayIdx.filter(i => m.days[i].week === w));
+  let head = '<tr><th class="c-idx">#</th><th class="c-dni">DNI</th><th class="c-nom">Nombre</th>';
+  m.metaCols.forEach(mc => head += `<th class="${metaClass(mc)}">${esc(mc.label)}</th>`);
+  weeks.forEach(w => head += `<th class="week">SEM ${w}</th>`);
+  head += '<th class="c-tot">TOTAL</th></tr>';
+  let body = '';
+  lista.forEach((r, idx) => {
+    let tr = `<tr><td class="c-idx">${idx+1}</td><td class="c-dni">${esc(r.dni)}</td><td class="c-nom">${esc(r.nombre)}</td>`;
+    m.metaCols.forEach(mc => tr += `<td class="meta ${metaClass(mc)}">${esc(r.meta[mc.label]||'')}</td>`);
+    let tot = 0;
+    weeks.forEach(w => { let s = 0; idxByWeek[w].forEach(i => s += r.hours[i]); tot += s; tr += `<td class="dc ${s>0?'work':'off'}">${s>0 ? fmtH(s) : '<span class="offcode">—</span>'}</td>`; });
+    tr += `<td class="tot">${fmtH(tot) || '0h'}</td></tr>`;
+    body += tr;
+  });
+  let foot = '<tfoot><tr><td class="c-idx"></td><td class="c-dni"></td><td class="c-nom">TOTAL SEMANA</td>';
+  m.metaCols.forEach(mc => foot += `<td class="${metaClass(mc)}"></td>`);
+  let gt = 0;
+  weeks.forEach(w => { let s = 0; lista.forEach(r => idxByWeek[w].forEach(i => s += r.hours[i])); gt += s; foot += `<td>${fmtH(s) || '0'}</td>`; });
+  foot += `<td class="tot">${fmtH(gt) || '0h'}</td></tr></tfoot>`;
+  return `<table><thead>${head}</thead><tbody>${body}</tbody>${foot}</table>`;
+}
+
+/* =========================================================
+   EXPORTAR / IMPRIMIR
+   ========================================================= */
+const csvCell = v => { const s = String(v ?? ''); return /[";\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+
+$('#btnCsv').addEventListener('click', () => {
+  if (!LAST){ alert('No hay datos para exportar.'); return; }
+  const { rows, metaCols, days } = LAST;
+  const head = ['Jefe inmediato','DNI','Nombre', ...metaCols.map(m => m.label), ...days.map(d => `${d.letter} ${d.date ? pad2(d.date.d)+'/'+pad2(d.date.m) : ''} (S${d.week})`), 'Total'];
+  const lines = [head];
+  rows.forEach(r => {
+    const line = [r.jefe, r.dni, r.nombre];
+    metaCols.forEach(m => line.push(r.meta[m.label] || ''));
+    let t = 0;
+    days.forEach(d => { t += r.hours[d.idx]; line.push(r.shifts[d.idx] || ''); });
+    line.push(Math.round(t*100)/100);
+    lines.push(line);
+  });
+  const csv = '\ufeff' + lines.map(l => l.map(csvCell).join(';')).join('\r\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `horarios_${CURRENT.sheetName}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+$('#btnPrint').addEventListener('click', () => window.print());
+
+/* =========================================================
+   INICIALIZACIÓN
+   ========================================================= */
+document.getElementById('footerYear').textContent = new Date().getFullYear();
+renderSwatches();
+loadTheme();
+USER = getSession();
+updateUserUI();
+if (!USER) showLogin();
+
+// La dropzone solo se muestra al admin
+if (USER && USER.rol === 'admin') dz.classList.add('on');
+
+// Revisar el rol del usuario al cambiar sesión para mostrar/ocultar dropzone
+const origHideLogin = hideLogin;
+hideLogin = function(){
+  origHideLogin();
+  const dzEl = document.getElementById('dropzone');
+  if (USER && USER.rol === 'admin') dzEl.classList.add('on');
+  else dzEl.classList.remove('on');
+  updateCloudUI();
+};
+
+// Si NO es admin y ya hay sesión, intentar cargar datos de la nube
+setTimeout(() => {
+  if (USER && USER.rol === 'coord' && FIREBASE_OK) pullFromCloud();
+}, 800);
+</script>
+</body>
+</html>
