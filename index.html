@@ -94,12 +94,7 @@
   #status.err{color:#dc2626;font-weight:600}
   #status.ok{color:#059669;font-weight:600}
 
-  /* ===== BARRA DE ESTADO NUBE ===== */
-  #cloudBar{
-    display:none;margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 18px;
-    box-shadow:0 1px 3px rgba(0,0,0,.05);
-    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  }
+  #cloudBar{display:none;margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 18px;box-shadow:0 1px 3px rgba(0,0,0,.05);align-items:center;gap:14px;flex-wrap:wrap}
   #cloudBar.on{display:flex}
   .cloud-status{display:flex;align-items:center;gap:8px;font-size:13px;color:#475569;font-weight:600}
   .cloud-dot{width:10px;height:10px;border-radius:50%;background:#94a3b8;transition:.3s}
@@ -357,7 +352,6 @@
 </header>
 
 <main>
-  <!-- Barra de estado nube (visible para admin y coordinadores) -->
   <div id="cloudBar">
     <div class="cloud-status">
       <span class="cloud-dot" id="cloudDot"></span>
@@ -367,7 +361,6 @@
     <button class="btn cloud" id="btnSync" style="display:none">🔄 Actualizar datos</button>
   </div>
 
-  <!-- Zona de carga (solo admin) -->
   <div id="dropzone">
     <div class="big">📂</div>
     <strong>Arrastra el archivo Excel aquí o haz clic para seleccionarlo</strong>
@@ -450,8 +443,9 @@
 
 <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg"></span></div>
 
-<!-- ============ FIREBASE SDK (versión modular, vía CDN) ============ -->
-<!-- ============ FIREBASE SDK (versión compat, sin imports) ============ -->
+<!-- ============================================================
+     FIREBASE SDK (versión compat, sin imports)
+     ============================================================ -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script>
@@ -473,7 +467,6 @@
     const fbApp = firebase.initializeApp(firebaseConfig);
     const fbDb  = firebase.firestore(fbApp);
 
-    // Exponer al scope global para que el script principal los use
     window.FB = {
       db: fbDb,
       doc: (db, coll, id) => db.collection(coll).doc(id),
@@ -497,13 +490,15 @@
 })();
 </script>
 
+<!-- ============================================================
+     SCRIPT PRINCIPAL DEL VISOR
+     ============================================================ -->
 <script>
 /* =========================================================
    CONFIGURACIÓN
- ========================================================= */
+   ========================================================= */
 const CREDENTIALS = { admin: { user:'admin', pass:'admin123' } };
 const SESSION_KEY = 'le_horarios_session';
-const CLOUD_DOC = 'horarios/actual';  // ruta del documento en Firestore
 
 let USER = null;
 let MODELS = [];
@@ -608,7 +603,7 @@ function showLogin(){
 }
 function hideLogin(){ document.getElementById('loginOverlay').classList.remove('show'); }
 
-function tryLogin(){
+function doLogin(){
   const activeTab = document.querySelector('.login-tab.active').dataset.tab;
   const err = document.getElementById('loginError');
   err.textContent = '';
@@ -622,40 +617,58 @@ function tryLogin(){
       updateUserUI();
       hideLogin();
       showToast('Bienvenido, Administrador');
-      if (CURRENT) applyUserFilter();
+      const dzEl = document.getElementById('dropzone');
+      dzEl.classList.add('on');
       updateCloudUI();
+      if (CURRENT) applyUserFilter();
       return;
     }
     err.textContent = 'Usuario o contraseña incorrectos.';
     return;
   }
 
+  // Coordinador
   const dniInput = document.getElementById('loginDni').value;
   const dni = normalizeDni(dniInput);
   if (!dni){
     err.textContent = 'Ingresa tu número de cédula.';
     return;
   }
-  if (!MODELS.length){
-    USER = { rol:'coord', nombre:'Coordinador', dni, cargo:'' };
+  console.log('[Login] Login coordinador · DNI:', dni, '· MODELS:', MODELS.length, '· FB_OK:', FIREBASE_OK);
+
+  if (MODELS.length){
+    const found = findUserByDni(dni);
+    if (!found){
+      err.textContent = 'No se encontró esa cédula en los datos actuales.';
+      return;
+    }
+    USER = { rol:'coord', nombre:found.nombre, dni, cargo:found.cargo || 'Coordinador' };
     setSession(USER);
     updateUserUI();
     hideLogin();
-    showToast('Sesión iniciada · esperando datos…');
+    showToast(`Bienvenido, ${USER.nombre}`);
+    applyUserFilter();
+    updateCloudUI();
     return;
   }
-  const found = findUserByDni(dni);
-  if (!found){
-    err.textContent = 'No se encontró esa cédula en el archivo. Verifica el número.';
-    return;
-  }
-  USER = { rol:'coord', nombre:found.nombre, dni, cargo:found.cargo || 'Coordinador' };
+
+  // Sin datos aún: guardar sesión y disparar carga
+  USER = { rol:'coord', nombre:'Cargando…', dni, cargo:'' };
   setSession(USER);
   updateUserUI();
   hideLogin();
-  showToast(`Bienvenido, ${USER.nombre}`);
-  applyUserFilter();
-  updateCloudUI();
+  showToast('Sesión iniciada · cargando datos de la nube…');
+
+  if (FIREBASE_OK){
+    pullFromCloud();
+  } else {
+    console.log('[Login] Firebase no listo aún · esperando evento…');
+    setTimeout(() => {
+      if (FIREBASE_OK && (!USER.cargo || USER.nombre === 'Cargando…')){
+        pullFromCloud();
+      }
+    }, 1500);
+  }
 }
 
 function applyUserFilter(){
@@ -687,10 +700,10 @@ document.querySelectorAll('.login-tab').forEach(tab => {
     document.getElementById('loginError').textContent = '';
   });
 });
-document.getElementById('loginBtn').addEventListener('click', tryLogin);
+document.getElementById('loginBtn').addEventListener('click', doLogin);
 document.getElementById('loginUser').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('loginPass').focus(); });
-document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key==='Enter') tryLogin(); });
-document.getElementById('loginDni').addEventListener('keydown', e => { if (e.key==='Enter') tryLogin(); });
+document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+document.getElementById('loginDni').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
 
 document.getElementById('userBtn').addEventListener('click', e => {
   e.stopPropagation();
@@ -731,7 +744,6 @@ function setCloudStatus(state, text, meta){
 function updateCloudUI(){
   const btnSync = document.getElementById('btnSync');
   if (!btnSync) return;
-  // El botón "Actualizar datos" solo es útil para coordinadores (admin sube Excel)
   btnSync.style.display = (USER && USER.rol === 'coord') ? 'inline-block' : 'none';
 }
 
@@ -769,8 +781,10 @@ async function pushToCloud(){
 }
 
 async function pullFromCloud(){
+  console.log('[FB] pullFromCloud() · FIREBASE_OK:', FIREBASE_OK, '· FB obj:', !!window.FB);
   if (!FIREBASE_OK || !window.FB){
-    setCloudStatus('err', '❌ Sin conexión a la nube');
+    setCloudStatus('err', '❌ Sin conexión a la nube',
+      'Firebase aún no está listo. Espera unos segundos y recarga si persiste.');
     return;
   }
   setCloudStatus('sync', '⏳ Leyendo datos de la nube…');
@@ -778,65 +792,90 @@ async function pullFromCloud(){
     const snap = await window.FB.getDoc(window.FB.doc(window.FB.db, 'horarios', 'actual'));
     if (!snap.exists()){
       setCloudStatus('err', '⚠️ Aún no hay datos publicados',
-        'Pídele al administrador que suba el Excel y pulse <b>Publicar en la nube</b>.');
+        'Pídele al administrador que suba el Excel y espere la confirmación.');
       return;
     }
     const data = snap.data();
     MODELS = data.models || [];
-    DIRECTORY = new Map(); // no viaja la BBDD, se reconstruye al leer el Excel
+    console.log('[FB] Datos recibidos:', MODELS.length, 'hojas ·', MODELS[0]?.rows?.length, 'personas');
 
-    // Reconstruir directorio desde los propios models (por si acaso)
+    DIRECTORY = new Map();
     MODELS.forEach(m => m.rows.forEach(r => {
-      if (r.dni) DIRECTORY.set(r.dni, { nombre: r.nombre, jefe: r.jefe, cargo: r.cargo, categoria: r.categoria || '' });
+      if (r.dni) DIRECTORY.set(r.dni, {
+        nombre: r.nombre, jefe: r.jefe, cargo: r.cargo, categoria: r.categoria || ''
+      });
     }));
 
     const firstDate = MODELS[0]?.days?.find(d => d.date)?.date;
     if (firstDate && !CAL_MONTH) CAL_MONTH = { y: firstDate.y, m: firstDate.m };
 
-    // Refrescar UI
     const selHoja = $('#fHoja');
     selHoja.innerHTML = MODELS.map((m,i) => `<option value="${i}">${esc(m.sheetName)} · ${m.rows.length} personas</option>`).join('');
     $('#panel').classList.add('on');
     $('#coordSection').classList.add('on');
     $('#legend').style.display = 'flex';
-    COORD_OWN = '';
-    selectModel(0);
-    computeAlerts();
 
-    if (USER && USER.rol === 'coord'){
+    if (USER && USER.rol === 'coord' && (!USER.cargo || USER.nombre === 'Cargando…')){
       const found = findUserByDni(USER.dni);
+      console.log('[FB] Validando DNI', USER.dni, '→ encontrado:', found);
       if (found){
         USER.nombre = found.nombre;
         USER.cargo = found.cargo || 'Coordinador';
         setSession(USER);
         updateUserUI();
-        applyUserFilter();
+      } else {
+        showToast('⚠️ Tu cédula no aparece en los horarios publicados');
       }
     }
+
+    COORD_OWN = '';
+    selectModel(0);
+    computeAlerts();
+
+    if (USER && USER.rol === 'coord'){
+      applyUserFilter();
+    }
+
+    const totalPersonas = MODELS[0].rows.length;
+    const totalCoords = new Set(MODELS[0].rows.map(r=>r.jefe)).size;
+    $('#headerBadge').innerHTML = `<b>${totalPersonas}</b>colaboradores · ${totalCoords} coordinadores`;
 
     const upd = data.updatedAt ? new Date(data.updatedAt).toLocaleString('es-CO') : '—';
     setCloudStatus('ok', '✅ Datos actualizados desde la nube',
       `Subidos por <b>${esc(data.uploadedBy || 'Admin')}</b> · ${upd}`);
   } catch(err){
-    console.error(err);
+    console.error('[FB] Error:', err);
     setCloudStatus('err', '❌ Error al leer datos: ' + err.message);
   }
 }
 
+/* Firebase ready listener */
 window.addEventListener('firebase-ready', () => {
   FIREBASE_OK = true;
+  console.log('[FB] Evento firebase-ready recibido · USER:', USER);
   setCloudStatus('ok', '✅ Conectado a la nube', 'Firebase listo');
-  // Auto-cargar datos de la nube si hay sesión y no es admin
-  setTimeout(() => {
-    if (USER && USER.rol === 'coord') pullFromCloud();
-  }, 300);
+  updateCloudUI();
+  if (USER && USER.rol === 'coord'){
+    pullFromCloud();
+  }
 });
 
-// Botón "Actualizar datos"
-document.getElementById('btnSync').addEventListener('click', pullFromCloud);
+/* Verificar si Firebase ya estaba cargado antes del listener */
+if (typeof window.FB !== 'undefined' && window.FB && window.FB.db){
+  console.log('[FB] Firebase ya estaba cargado, procesando inmediatamente');
+  window.dispatchEvent(new Event('firebase-ready'));
+}
 
-// El admin también puede forzar "publicar" tras cargar el Excel
-// (se llama desde handleFile al terminar de parsear)
+/* Timeout de seguridad */
+setTimeout(() => {
+  if (!FIREBASE_OK){
+    console.warn('[FB] Timeout: Firebase no respondió en 8 segundos');
+    setCloudStatus('err', '❌ No se pudo conectar a la nube',
+      'Verifica tu conexión a Internet y recarga la página (Ctrl+Shift+R).');
+  }
+}, 8000);
+
+document.getElementById('btnSync').addEventListener('click', pullFromCloud);
 
 /* =========================================================
    TEMAS
@@ -1165,26 +1204,11 @@ async function handleFile(file){
     selectModel(0);
     computeAlerts();
 
-    if (USER && USER.rol === 'coord' && !USER.cargo){
-      const found = findUserByDni(USER.dni);
-      if (found){
-        USER.nombre = found.nombre;
-        USER.cargo = found.cargo || 'Coordinador';
-        setSession(USER);
-        updateUserUI();
-        applyUserFilter();
-        showToast(`Bienvenido, ${USER.nombre}`);
-      } else {
-        showToast('Tu cédula no aparece en este archivo');
-      }
-    }
-
     const firstDate = MODELS[0].days.find(d => d.date)?.date;
     if (firstDate) CAL_MONTH = { y: firstDate.y, m: firstDate.m };
 
     setStatus(`✅ ${file.name} cargado · ${MODELS.length} hoja(s) · ${DIRECTORY.size} registros.`, 'ok');
 
-    // Admin: subir automáticamente a la nube
     if (USER && USER.rol === 'admin' && FIREBASE_OK){
       await pushToCloud();
     }
@@ -1633,259 +1657,25 @@ $('#btnCsv').addEventListener('click', () => {
 $('#btnPrint').addEventListener('click', () => window.print());
 
 /* =========================================================
-   INICIALIZACIÓN
+   ARRANQUE
    ========================================================= */
 document.getElementById('footerYear').textContent = new Date().getFullYear();
 renderSwatches();
 loadTheme();
 
-/* =========================================================
-   FIREBASE READY HANDLER (registrado ANTES del module)
-   ========================================================= */
-window.addEventListener('firebase-ready', () => {
-  FIREBASE_OK = true;
-  console.log('[FB] Evento firebase-ready recibido · USER:', USER);
-  setCloudStatus('ok', '✅ Conectado a la nube', 'Firebase listo');
-  updateCloudUI();
-
-  // Si es coordinador ya logueado → cargar datos
-  if (USER && USER.rol === 'coord'){
-    pullFromCloud();
-  }
-});
-
-/* =========================================================
-   LOGIN ROBUSTO (reemplaza la función tryLogin original)
-   ========================================================= */
-tryLogin = function(){
-  const activeTab = document.querySelector('.login-tab.active').dataset.tab;
-  const err = document.getElementById('loginError');
-  err.textContent = '';
-
-  if (activeTab === 'admin'){
-    const u = document.getElementById('loginUser').value.trim();
-    const p = document.getElementById('loginPass').value;
-    if (u === CREDENTIALS.admin.user && p === CREDENTIALS.admin.pass){
-      USER = { rol:'admin', nombre:'Administrador', dni:'', cargo:'' };
-      setSession(USER);
-      updateUserUI();
-      hideLoginFn();
-      showToast('Bienvenido, Administrador');
-      if (CURRENT) applyUserFilter();
-      updateCloudUI();
-      return;
-    }
-    err.textContent = 'Usuario o contraseña incorrectos.';
-    return;
-  }
-
-  // Coordinador
-  const dniInput = document.getElementById('loginDni').value;
-  const dni = normalizeDni(dniInput);
-  if (!dni){
-    err.textContent = 'Ingresa tu número de cédula.';
-    return;
-  }
-  console.log('[Login] Login coordinador · DNI:', dni, '· MODELS:', MODELS.length, '· FB_OK:', FIREBASE_OK);
-
-  // Si ya hay datos cargados, validar directo
-  if (MODELS.length){
-    const found = findUserByDni(dni);
-    if (!found){
-      err.textContent = 'No se encontró esa cédula en los datos actuales.';
-      return;
-    }
-    USER = { rol:'coord', nombre:found.nombre, dni, cargo:found.cargo || 'Coordinador' };
-    setSession(USER);
-    updateUserUI();
-    hideLoginFn();
-    showToast(`Bienvenido, ${USER.nombre}`);
-    applyUserFilter();
-    updateCloudUI();
-    return;
-  }
-
-  // Sin datos todavía: guardar DNI y disparar carga
-  USER = { rol:'coord', nombre:'Cargando…', dni, cargo:'' };
-  setSession(USER);
-  updateUserUI();
-  hideLoginFn();
-  showToast('Sesión iniciada · cargando datos de la nube…');
-
-  if (FIREBASE_OK){
-    pullFromCloud();
-  } else {
-    // Esperar al evento firebase-ready que ya tiene el handler arriba
-    console.log('[Login] Firebase no listo aún · esperando evento…');
-    // Timeout de seguridad: si en 5s no hay respuesta, avisar
-    setTimeout(() => {
-      if (!FIREBASE_OK){
-        setCloudStatus('err', '❌ No se pudo conectar a la nube',
-          'Verifica tu conexión a Internet y recarga la página (F5).');
-      }
-    }, 5000);
-  }
-};
-document.getElementById('loginBtn').onclick = tryLogin;
-
-/* Reasignar listeners de Enter por si el tryLogin cambió */
-document.getElementById('loginUser').onkeydown = e => { if (e.key==='Enter') document.getElementById('loginPass').focus(); };
-document.getElementById('loginPass').onkeydown = e => { if (e.key==='Enter') tryLogin(); };
-document.getElementById('loginDni').onkeydown  = e => { if (e.key==='Enter') tryLogin(); };
-
-/* =========================================================
-   HIDE LOGIN (con refresco de UI y auto-pull)
-   ========================================================= */
-function hideLoginFn(){
-  document.getElementById('loginOverlay').classList.remove('show');
-  const dzEl = document.getElementById('dropzone');
-  if (USER && USER.rol === 'admin') dzEl.classList.add('on');
-  else dzEl.classList.remove('on');
-  updateCloudUI();
-}
-// Sobrescribir la versión simple
-hideLogin = hideLoginFn;
-
-/* =========================================================
-   PULL FROM CLOUD
-   ========================================================= */
-async function pullFromCloud(){
-  console.log('[FB] pullFromCloud() · FIREBASE_OK:', FIREBASE_OK, '· FB obj:', !!window.FB);
-  if (!FIREBASE_OK || !window.FB){
-    setCloudStatus('err', '❌ Sin conexión a la nube',
-      'Firebase aún no está listo. Espera unos segundos y recarga si persiste.');
-    return;
-  }
-  setCloudStatus('sync', '⏳ Leyendo datos de la nube…');
-  try{
-    const snap = await window.FB.getDoc(window.FB.doc(window.FB.db, 'horarios', 'actual'));
-    if (!snap.exists()){
-      setCloudStatus('err', '⚠️ Aún no hay datos publicados',
-        'Pídele al administrador que suba el Excel y espere la confirmación.');
-      return;
-    }
-    const data = snap.data();
-    MODELS = data.models || [];
-    console.log('[FB] Datos recibidos:', MODELS.length, 'hojas ·', MODELS[0]?.rows?.length, 'personas');
-
-    DIRECTORY = new Map();
-    MODELS.forEach(m => m.rows.forEach(r => {
-      if (r.dni) DIRECTORY.set(r.dni, {
-        nombre: r.nombre, jefe: r.jefe, cargo: r.cargo, categoria: r.categoria || ''
-      });
-    }));
-
-    const firstDate = MODELS[0]?.days?.find(d => d.date)?.date;
-    if (firstDate && !CAL_MONTH) CAL_MONTH = { y: firstDate.y, m: firstDate.m };
-
-    const selHoja = $('#fHoja');
-    selHoja.innerHTML = MODELS.map((m,i) => `<option value="${i}">${esc(m.sheetName)} · ${m.rows.length} personas</option>`).join('');
-    $('#panel').classList.add('on');
-    $('#coordSection').classList.add('on');
-    $('#legend').style.display = 'flex';
-
-    // Validar sesión del coordinador
-    if (USER && USER.rol === 'coord' && (!USER.cargo || USER.nombre === 'Cargando…')){
-      const found = findUserByDni(USER.dni);
-      console.log('[FB] Validando DNI', USER.dni, '→ encontrado:', found);
-      if (found){
-        USER.nombre = found.nombre;
-        USER.cargo = found.cargo || 'Coordinador';
-        setSession(USER);
-        updateUserUI();
-      } else {
-        showToast('⚠️ Tu cédula no aparece en los horarios publicados');
-      }
-    }
-
-    COORD_OWN = '';
-    selectModel(0);
-    computeAlerts();
-
-    if (USER && USER.rol === 'coord'){
-      applyUserFilter();
-    }
-
-    const totalPersonas = MODELS[0].rows.length;
-    const totalCoords = new Set(MODELS[0].rows.map(r=>r.jefe)).size;
-    $('#headerBadge').innerHTML = `<b>${totalPersonas}</b>colaboradores · ${totalCoords} coordinadores`;
-
-    const upd = data.updatedAt ? new Date(data.updatedAt).toLocaleString('es-CO') : '—';
-    setCloudStatus('ok', '✅ Datos actualizados desde la nube',
-      `Subidos por <b>${esc(data.uploadedBy || 'Admin')}</b> · ${upd}`);
-  } catch(err){
-    console.error('[FB] Error:', err);
-    setCloudStatus('err', '❌ Error al leer datos: ' + err.message);
-  }
-}
-
-/* =========================================================
-   PUSH TO CLOUD
-   ========================================================= */
-async function pushToCloud(){
-  if (!FIREBASE_OK || !window.FB){
-    setCloudStatus('err', '❌ Sin conexión a la nube');
-    showToast('Firebase no está listo');
-    return;
-  }
-  if (!MODELS.length){
-    showToast('Primero carga un Excel');
-    return;
-  }
-  setCloudStatus('sync', '⏳ Subiendo datos a la nube…');
-  try{
-    const payload = {
-      updatedAt: Date.now(),
-      uploadedBy: (USER && USER.nombre) || 'Admin',
-      models: MODELS.map(m => ({
-        sheetName: m.sheetName,
-        days: m.days,
-        metaCols: m.metaCols,
-        rows: m.rows
-      }))
-    };
-    await window.FB.setDoc(window.FB.doc(window.FB.db, 'horarios', 'actual'), payload);
-    setCloudStatus('ok', '✅ Datos publicados en la nube',
-      `<b>${MODELS.length}</b> hoja(s) · <b>${MODELS[0].rows.length}</b> personas · ${new Date().toLocaleString('es-CO')}`);
-    showToast('✅ Horarios publicados · ya los pueden ver todos');
-  } catch(err){
-    console.error(err);
-    setCloudStatus('err', '❌ Error al subir: ' + err.message);
-    showToast('Error al subir a la nube');
-  }
-}
-
-/* Botón sincronizar */
-document.getElementById('btnSync').onclick = pullFromCloud;
-
-/* =========================================================
-   ARRANQUE DE SESIÓN
-   ========================================================= */
 USER = getSession();
 updateUserUI();
 
 if (USER){
-  // Hay sesión guardada: aplicar visibilidad de la dropzone
   const dzEl = document.getElementById('dropzone');
   if (USER.rol === 'admin') dzEl.classList.add('on');
   updateCloudUI();
-
-  // Si es coordinador y Firebase aún no está listo, el evento 'firebase-ready'
-  // ya tiene el handler y lo cargará.
   if (USER.rol === 'coord' && FIREBASE_OK){
     pullFromCloud();
   }
 } else {
   showLogin();
 }
-
-/* Fallback: si en 5 segundos no llegó el evento firebase-ready, avisar */
-setTimeout(() => {
-  if (!FIREBASE_OK){
-    console.warn('[FB] Timeout esperando Firebase · FIREBASE_OK sigue false');
-    setCloudStatus('err', '❌ No se pudo conectar a la nube',
-      'Verifica tu conexión y recarga la página (F5). Si persiste, puede ser bloqueo de la red.');
-  }
-}, 5000);
+</script>
 </body>
 </html>
