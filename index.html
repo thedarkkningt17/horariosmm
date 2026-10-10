@@ -451,30 +451,51 @@
 <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg"></span></div>
 
 <!-- ============ FIREBASE SDK (versión modular, vía CDN) ============ -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDZYwczvqrHmi7bHH0Us4u4EBCj9SUtsj4",
-  authDomain: "horarios-mediamarkt-95d3d.firebaseapp.com",
-  projectId: "horarios-mediamarkt-95d3d",
-  storageBucket: "horarios-mediamarkt-95d3d.firebasestorage.app",
-  messagingSenderId: "520906911737",
-  appId: "1:520906911737:web:24d6a8b80591475aa55728"
-};
-
-const fbApp = initializeApp(firebaseConfig);
-const fbDb = getFirestore(fbApp);
-
-// Exponer al scope global para que el script principal los use
-window.FB = { db: fbDb, doc, getDoc, setDoc };
-
-// Avisar al script principal cuando Firebase esté listo
-window.dispatchEvent(new Event('firebase-ready'));
-</script>
-
+<!-- ============ FIREBASE SDK (versión compat, sin imports) ============ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script>
+(function(){
+  try{
+    if (typeof firebase === 'undefined'){
+      console.error('[FB] firebase no está definido. Los scripts no cargaron.');
+      return;
+    }
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZYwczvqrHmi7bHH0Us4u4EBCj9SUtsj4",
+      authDomain: "horarios-mediamarkt-95d3d.firebaseapp.com",
+      projectId: "horarios-mediamarkt-95d3d",
+      storageBucket: "horarios-mediamarkt-95d3d.firebasestorage.app",
+      messagingSenderId: "520906911737",
+      appId: "1:520906911737:web:24d6a8b80591475aa55728"
+    };
+
+    const fbApp = firebase.initializeApp(firebaseConfig);
+    const fbDb  = firebase.firestore(fbApp);
+
+    // Exponer al scope global para que el script principal los use
+    window.FB = {
+      db: fbDb,
+      doc: (db, coll, id) => db.collection(coll).doc(id),
+      getDoc: async (ref) => {
+        const snap = await ref.get();
+        return {
+          exists: () => snap.exists,
+          data: () => snap.data()
+        };
+      },
+      setDoc: async (ref, data) => {
+        return await ref.set(data);
+      }
+    };
+
+    console.log('[FB] Firebase compat inicializado correctamente');
+    window.dispatchEvent(new Event('firebase-ready'));
+  } catch(err){
+    console.error('[FB] Error inicializando Firebase:', err);
+  }
+})();
+</script>
 /* =========================================================
    CONFIGURACIÓN
    ========================================================= */
