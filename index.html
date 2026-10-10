@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Horarios MediaMarkt · Abai</title>
+<script src="xlsx.full.min.js"></script>
 <style>
   :root, [data-theme="abai"]{--brand:#E5007D;--brand-rgb:229,0,125;--brand-dark:#B3005F;--brand-soft:#FFF0F7;--dark:#1A1A2E;--dark-2:#26264A;--bg:#f1f5f9;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--work:#ecfdf5;--off:#f1f5f9}
   [data-theme="ocean"]{--brand:#0077C8;--brand-rgb:0,119,200;--brand-dark:#005A96;--brand-soft:#E6F4FC;--dark:#0A2540;--dark-2:#1B3A5C;--bg:#f0f5fa;--ink:#0f172a;--muted:#5a7184;--line:#dbe7f0;--work:#e8f6ff;--off:#f0f5fa}
@@ -83,7 +84,8 @@
   .swatch.active .circle::after{opacity:1}
 
   main{padding:20px 30px 40px;max-width:100%;flex:1}
-  #dropzone{background:#fff;border:2px dashed #cbd5e1;border-radius:16px;padding:34px 20px;text-align:center;cursor:pointer;transition:.18s;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  #dropzone{background:#fff;border:2px dashed #cbd5e1;border-radius:16px;padding:34px 20px;text-align:center;cursor:pointer;transition:.18s;box-shadow:0 1px 3px rgba(0,0,0,.05);display:none}
+  #dropzone.on{display:block}
   #dropzone:hover,#dropzone.over{border-color:var(--brand);background:var(--brand-soft)}
   #dropzone .big{font-size:34px;line-height:1}
   #dropzone strong{display:block;margin:10px 0 4px;font-size:15px}
@@ -91,6 +93,22 @@
   #status{margin-top:10px;font-size:13px;color:var(--muted);min-height:18px}
   #status.err{color:#dc2626;font-weight:600}
   #status.ok{color:#059669;font-weight:600}
+
+  /* ===== BARRA DE ESTADO NUBE ===== */
+  #cloudBar{
+    display:none;margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 18px;
+    box-shadow:0 1px 3px rgba(0,0,0,.05);
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  }
+  #cloudBar.on{display:flex}
+  .cloud-status{display:flex;align-items:center;gap:8px;font-size:13px;color:#475569;font-weight:600}
+  .cloud-dot{width:10px;height:10px;border-radius:50%;background:#94a3b8;transition:.3s}
+  .cloud-dot.ok{background:#10b981;box-shadow:0 0 8px rgba(16,185,129,.6)}
+  .cloud-dot.err{background:#dc2626}
+  .cloud-dot.sync{background:#f59e0b;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .cloud-meta{font-size:12px;color:var(--muted);flex:1;min-width:200px}
+  .cloud-meta b{color:var(--dark);font-weight:800}
 
   #coordSection{display:none;margin-top:22px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
   #coordSection.on{display:block}
@@ -140,6 +158,8 @@
   .btn:hover{background:var(--brand-dark)}
   .btn.ghost{background:#e2e8f0;color:#0f172a}
   .btn.ghost:hover{background:#cbd5e1}
+  .btn.cloud{background:#0ea5e9}
+  .btn.cloud:hover{background:#0284c7}
   .chk{display:flex;align-items:center;gap:6px;font-size:13px;color:#334155;padding-bottom:9px}
   .chk input{width:16px;height:16px;accent-color:var(--brand)}
   .chk.small{font-size:12px;padding-bottom:0}
@@ -250,7 +270,7 @@
     .title-block h1{color:#000!important}
     .title-block h1::before{background:var(--brand)!important}
     .title-block p{color:#555!important}
-    #dropzone,#panel,.legend,.btn,#coordSection,.theme-wrap,.toast,#alertPanel,.user-wrap,#loginOverlay{display:none!important}
+    #dropzone,#panel,.legend,.btn,#coordSection,.theme-wrap,.toast,#alertPanel,.user-wrap,#loginOverlay,#cloudBar{display:none!important}
     .table-wrap{max-height:none;overflow:visible}
     .group{page-break-inside:avoid;box-shadow:none}
     body{background:#fff}
@@ -337,9 +357,20 @@
 </header>
 
 <main>
+  <!-- Barra de estado nube (visible para admin y coordinadores) -->
+  <div id="cloudBar">
+    <div class="cloud-status">
+      <span class="cloud-dot" id="cloudDot"></span>
+      <span id="cloudText">Conectando a la nube…</span>
+    </div>
+    <div class="cloud-meta" id="cloudMeta"></div>
+    <button class="btn cloud" id="btnSync" style="display:none">🔄 Actualizar datos</button>
+  </div>
+
+  <!-- Zona de carga (solo admin) -->
   <div id="dropzone">
     <div class="big">📂</div>
-    <strong>Cargando librería Excel…</strong>
+    <strong>Arrastra el archivo Excel aquí o haz clic para seleccionarlo</strong>
     <small>Formatos: .xlsx · .xls · .xlsm</small>
     <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm" hidden>
   </div>
@@ -411,7 +442,7 @@
       </div>
     </div>
     <div class="footer-meta">
-      <span><span class="footer-dot"></span> Visor de Horarios <b>v4.4</b></span>
+      <span><span class="footer-dot"></span> Visor de Horarios <b>v5.0 · Nube</b></span>
       <span>Cliente: <b>Abai · MediaMarkt</b></span>
     </div>
   </div>
@@ -419,67 +450,37 @@
 
 <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg"></span></div>
 
+<!-- ============ FIREBASE SDK (versión modular, vía CDN) ============ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDZYwczvqrHmi7bHH0Us4u4EBCj9SUtsj4",
+  authDomain: "horarios-mediamarkt-95d3d.firebaseapp.com",
+  projectId: "horarios-mediamarkt-95d3d",
+  storageBucket: "horarios-mediamarkt-95d3d.firebasestorage.app",
+  messagingSenderId: "520906911737",
+  appId: "1:520906911737:web:24d6a8b80591475aa55728"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const fbDb = getFirestore(fbApp);
+
+// Exponer al scope global para que el script principal los use
+window.FB = { db: fbDb, doc, getDoc, setDoc };
+
+// Avisar al script principal cuando Firebase esté listo
+window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
 <script>
-/* =========================================================
-   CARGADOR ROBUSTO DE XLSX (multi-CDN con fallback)
-   ========================================================= */
-const XLSX_CDNS = [
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
-  'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
-];
-
-let XLSX_READY = false;
-
-function loadXLSX(){
-  return new Promise((resolve, reject) => {
-    let idx = 0;
-    const tryNext = () => {
-      if (idx >= XLSX_CDNS.length){
-        reject(new Error('No se pudo cargar la librería XLSX desde ningún CDN'));
-        return;
-      }
-      const url = XLSX_CDNS[idx++];
-      const s = document.createElement('script');
-      s.src = url;
-      s.async = true;
-      s.onload = () => {
-        if (typeof XLSX !== 'undefined'){
-          console.log('[XLSX] Cargado desde:', url);
-          resolve(true);
-        } else {
-          tryNext();
-        }
-      };
-      s.onerror = () => {
-        console.warn('[XLSX] Falló:', url, '· probando siguiente CDN…');
-        tryNext();
-      };
-      document.head.appendChild(s);
-    };
-    tryNext();
-  });
-}
-
-function setDropzoneReady(ready){
-  const dz = document.getElementById('dropzone');
-  if (!dz) return;
-  if (ready){
-    dz.style.opacity = '';
-    dz.style.pointerEvents = '';
-    dz.querySelector('strong').textContent = 'Arrastra el archivo aquí o haz clic para seleccionarlo';
-  } else {
-    dz.style.opacity = '.6';
-    dz.style.pointerEvents = 'none';
-    dz.querySelector('strong').textContent = 'Cargando librería Excel…';
-  }
-}
-
 /* =========================================================
    CONFIGURACIÓN
    ========================================================= */
 const CREDENTIALS = { admin: { user:'admin', pass:'admin123' } };
 const SESSION_KEY = 'le_horarios_session';
+const CLOUD_DOC = 'horarios/actual';  // ruta del documento en Firestore
 
 let USER = null;
 let MODELS = [];
@@ -489,6 +490,7 @@ let DIRECTORY = new Map();
 let COORD_OWN = '';
 let ALERTS = [];
 let CAL_MONTH = null;
+let FIREBASE_OK = false;
 
 const $ = s => document.querySelector(s);
 
@@ -515,13 +517,11 @@ function findUserByDni(dniRaw){
       }
     }
   }
-
   for (const [key, entry] of DIRECTORY){
     if (normalizeDni(key) === norm){
       return { nombre: entry.nombre, cargo: entry.cargo || 'Coordinador', jefe: entry.jefe };
     }
   }
-
   const digits = norm.replace(/[^0-9]/g, '');
   if (digits.length >= 6){
     const suffix = digits.slice(-8);
@@ -540,7 +540,6 @@ function findUserByDni(dniRaw){
       }
     }
   }
-
   return null;
 }
 
@@ -560,7 +559,6 @@ function updateUserUI(){
     av.style.background = 'var(--brand)';
     return;
   }
-
   const ini = USER.nombre.split(/\s+/).filter(Boolean).slice(0,2).map(p=>p[0]).join('').toUpperCase();
   av.textContent = ini || (USER.rol === 'admin' ? 'AD' : '?');
   av.style.background = USER.rol === 'admin' ? 'linear-gradient(135deg,#1A1A2E,#26264A)' : 'var(--brand)';
@@ -602,6 +600,7 @@ function tryLogin(){
       hideLogin();
       showToast('Bienvenido, Administrador');
       if (CURRENT) applyUserFilter();
+      updateCloudUI();
       return;
     }
     err.textContent = 'Usuario o contraseña incorrectos.';
@@ -614,18 +613,15 @@ function tryLogin(){
     err.textContent = 'Ingresa tu número de cédula.';
     return;
   }
-
   if (!MODELS.length){
     USER = { rol:'coord', nombre:'Coordinador', dni, cargo:'' };
     setSession(USER);
     updateUserUI();
     hideLogin();
-    showToast('Sesión iniciada · carga el archivo para ver tu equipo');
+    showToast('Sesión iniciada · esperando datos…');
     return;
   }
-
   const found = findUserByDni(dni);
-  console.log('[Login] DNI buscado:', dni, '| Encontrado:', found);
   if (!found){
     err.textContent = 'No se encontró esa cédula en el archivo. Verifica el número.';
     return;
@@ -636,16 +632,15 @@ function tryLogin(){
   hideLogin();
   showToast(`Bienvenido, ${USER.nombre}`);
   applyUserFilter();
+  updateCloudUI();
 }
 
 function applyUserFilter(){
   if (!USER || USER.rol === 'admin') return;
   const sel = document.getElementById('fJefe');
   if (!sel) return;
-
   const userNorm = clean(USER.nombre);
   const matchedOpt = [...sel.options].find(o => clean(o.value) === userNorm);
-
   if (matchedOpt){
     sel.value = matchedOpt.value;
     COORD_OWN = '';
@@ -696,6 +691,131 @@ document.getElementById('btnLogout').addEventListener('click', () => {
 });
 
 /* =========================================================
+   FIREBASE
+   ========================================================= */
+function setCloudStatus(state, text, meta){
+  const dot = document.getElementById('cloudDot');
+  const txt = document.getElementById('cloudText');
+  const mt  = document.getElementById('cloudMeta');
+  const bar = document.getElementById('cloudBar');
+  if (!dot) return;
+  dot.className = 'cloud-dot ' + (state || '');
+  txt.textContent = text || '';
+  if (meta !== undefined) mt.innerHTML = meta || '';
+  bar.classList.add('on');
+}
+
+function updateCloudUI(){
+  const btnSync = document.getElementById('btnSync');
+  if (!btnSync) return;
+  // El botón "Actualizar datos" solo es útil para coordinadores (admin sube Excel)
+  btnSync.style.display = (USER && USER.rol === 'coord') ? 'inline-block' : 'none';
+}
+
+async function pushToCloud(){
+  if (!FIREBASE_OK || !window.FB){
+    setCloudStatus('err', '❌ Sin conexión a la nube');
+    showToast('Firebase no está listo');
+    return;
+  }
+  if (!MODELS.length){
+    showToast('Primero carga un Excel');
+    return;
+  }
+  setCloudStatus('sync', '⏳ Subiendo datos a la nube…');
+  try{
+    const payload = {
+      updatedAt: Date.now(),
+      uploadedBy: (USER && USER.nombre) || 'Admin',
+      models: MODELS.map(m => ({
+        sheetName: m.sheetName,
+        days: m.days,
+        metaCols: m.metaCols,
+        rows: m.rows
+      }))
+    };
+    await window.FB.setDoc(window.FB.doc(window.FB.db, 'horarios', 'actual'), payload);
+    setCloudStatus('ok', '✅ Datos publicados en la nube',
+      `<b>${MODELS.length}</b> hoja(s) · <b>${MODELS[0].rows.length}</b> personas · ${new Date().toLocaleString('es-CO')}`);
+    showToast('✅ Horarios publicados · ya los pueden ver todos');
+  } catch(err){
+    console.error(err);
+    setCloudStatus('err', '❌ Error al subir: ' + err.message);
+    showToast('Error al subir a la nube');
+  }
+}
+
+async function pullFromCloud(){
+  if (!FIREBASE_OK || !window.FB){
+    setCloudStatus('err', '❌ Sin conexión a la nube');
+    return;
+  }
+  setCloudStatus('sync', '⏳ Leyendo datos de la nube…');
+  try{
+    const snap = await window.FB.getDoc(window.FB.doc(window.FB.db, 'horarios', 'actual'));
+    if (!snap.exists()){
+      setCloudStatus('err', '⚠️ Aún no hay datos publicados',
+        'Pídele al administrador que suba el Excel y pulse <b>Publicar en la nube</b>.');
+      return;
+    }
+    const data = snap.data();
+    MODELS = data.models || [];
+    DIRECTORY = new Map(); // no viaja la BBDD, se reconstruye al leer el Excel
+
+    // Reconstruir directorio desde los propios models (por si acaso)
+    MODELS.forEach(m => m.rows.forEach(r => {
+      if (r.dni) DIRECTORY.set(r.dni, { nombre: r.nombre, jefe: r.jefe, cargo: r.cargo, categoria: r.categoria || '' });
+    }));
+
+    const firstDate = MODELS[0]?.days?.find(d => d.date)?.date;
+    if (firstDate && !CAL_MONTH) CAL_MONTH = { y: firstDate.y, m: firstDate.m };
+
+    // Refrescar UI
+    const selHoja = $('#fHoja');
+    selHoja.innerHTML = MODELS.map((m,i) => `<option value="${i}">${esc(m.sheetName)} · ${m.rows.length} personas</option>`).join('');
+    $('#panel').classList.add('on');
+    $('#coordSection').classList.add('on');
+    $('#legend').style.display = 'flex';
+    COORD_OWN = '';
+    selectModel(0);
+    computeAlerts();
+
+    if (USER && USER.rol === 'coord'){
+      const found = findUserByDni(USER.dni);
+      if (found){
+        USER.nombre = found.nombre;
+        USER.cargo = found.cargo || 'Coordinador';
+        setSession(USER);
+        updateUserUI();
+        applyUserFilter();
+      }
+    }
+
+    const upd = data.updatedAt ? new Date(data.updatedAt).toLocaleString('es-CO') : '—';
+    setCloudStatus('ok', '✅ Datos actualizados desde la nube',
+      `Subidos por <b>${esc(data.uploadedBy || 'Admin')}</b> · ${upd}`);
+  } catch(err){
+    console.error(err);
+    setCloudStatus('err', '❌ Error al leer datos: ' + err.message);
+  }
+}
+
+window.addEventListener('firebase-ready', () => {
+  FIREBASE_OK = true;
+  setCloudStatus('ok', '✅ Conectado a la nube', 'Firebase listo');
+  // Auto-cargar datos de la nube si hay sesión y no es admin
+  setTimeout(() => {
+    if (USER && USER.rol === 'coord') pullFromCloud();
+  }, 300);
+});
+
+// Botón "Actualizar datos"
+document.getElementById('btnSync').addEventListener('click', pullFromCloud);
+
+// El admin también puede forzar "publicar" tras cargar el Excel
+// (se llama desde handleFile al terminar de parsear)
+
+/* =========================================================
    TEMAS
    ========================================================= */
 const THEMES = [
@@ -743,7 +863,7 @@ function showToast(msg){
   document.getElementById('toastMsg').textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
 const themeBtn = document.getElementById('themeBtn');
@@ -936,7 +1056,6 @@ function parseSheet(ws, sheetName, directory){
 
     let dni = row[dniCol];
     dni = (typeof dni === 'number') ? String(Math.round(dni)) : normStr(dni);
-
     const key = dni + '|' + nombre;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -973,19 +1092,19 @@ function setStatus(msg, isErr){
   if (isErr === true) statusEl.classList.add('err');
   else if (isErr === 'ok') statusEl.classList.add('ok');
 }
-dz.addEventListener('click', () => { if (XLSX_READY) fileInput.click(); });
+
+dz.addEventListener('click', () => { if (typeof XLSX !== 'undefined') fileInput.click(); });
 fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
-['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); if (XLSX_READY) dz.classList.add('over'); }));
+['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
 ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
 dz.addEventListener('drop', e => {
-  if (!XLSX_READY) return;
   const f = e.dataTransfer.files[0];
   if (f) handleFile(f);
 });
 
 async function handleFile(file){
-  if (!XLSX_READY || typeof XLSX === 'undefined'){
-    setStatus('⏳ La librería Excel aún no está lista. Espera unos segundos y vuelve a intentarlo.', true);
+  if (typeof XLSX === 'undefined'){
+    setStatus('❌ La librería Excel no está cargada. Recarga la página.', true);
     return;
   }
   try{
@@ -1001,7 +1120,7 @@ async function handleFile(file){
     });
 
     if (!MODELS.length){
-      setStatus('❌ No se encontró ninguna hoja con formato de horario (NOMBRE + DNI + días).', true);
+      setStatus('❌ No se encontró ninguna hoja con formato de horario.', true);
       $('#panel').classList.remove('on');
       $('#coordSection').classList.remove('on');
       $('#alertPanel').classList.remove('on');
@@ -1040,16 +1159,15 @@ async function handleFile(file){
     const firstDate = MODELS[0].days.find(d => d.date)?.date;
     if (firstDate) CAL_MONTH = { y: firstDate.y, m: firstDate.m };
 
-    setStatus(`✅ ${file.name} cargado · ${MODELS.length} hoja(s) · ${DIRECTORY.size} registros BBDD.`, 'ok');
+    setStatus(`✅ ${file.name} cargado · ${MODELS.length} hoja(s) · ${DIRECTORY.size} registros.`, 'ok');
+
+    // Admin: subir automáticamente a la nube
+    if (USER && USER.rol === 'admin' && FIREBASE_OK){
+      await pushToCloud();
+    }
   } catch(err){
     console.error(err);
-    if (err.message && err.message.includes('XLSX')){
-      setStatus('❌ La librería Excel se desconectó. Recarga la página (F5) e intenta de nuevo.', true);
-      XLSX_READY = false;
-      setDropzoneReady(false);
-    } else {
-      setStatus('❌ Error al leer el archivo: ' + err.message, true);
-    }
+    setStatus('❌ Error al leer el archivo: ' + err.message, true);
   }
 }
 
@@ -1092,7 +1210,7 @@ function computeAlerts(){
         racha++;
         if (racha === 5){
           const dEnd = days[i];
-          ALERTS.push({ sev:'info', icon:'🔍', msg:`<b>${esc(r.nombre)}</b> sin turno asignado <b>5+ días</b> (desde ${days[startIdx].date ? pad2(days[startIdx].date.d)+'/'+pad2(days[startIdx].date.m) : '?'} hasta ${dEnd.date ? pad2(dEnd.date.d)+'/'+pad2(dEnd.date.m) : '?'}).` });
+          ALERTS.push({ sev:'info', icon:'🔍', msg:`<b>${esc(r.nombre)}</b> sin turno <b>5+ días</b> (${days[startIdx].date ? pad2(days[startIdx].date.d)+'/'+pad2(days[startIdx].date.m) : '?'} → ${dEnd.date ? pad2(dEnd.date.d)+'/'+pad2(dEnd.date.m) : '?'}).` });
         }
       } else racha = 0;
     });
@@ -1125,30 +1243,24 @@ function buildCoordCards(){
   const m = CURRENT;
   if (!m) return;
   const isCoord = USER && USER.rol === 'coord';
-
   const nombres = new Set(m.rows.map(r => r.jefe).filter(j => j && j !== '(Sin jefe asignado)'));
   m.rows.forEach(r => { if (/coordinador/i.test(r.cargo)) nombres.add(r.nombre); });
-
   let lista = [...nombres].sort((a,b)=>a.localeCompare(b,'es'));
   if (isCoord) lista = lista.filter(n => clean(n) === clean(USER.nombre));
 
   const totalEquipo = m.rows.length;
   let html = '';
-
   if (!isCoord){
     html += `<div class="coord-card ${!COORD_OWN && !$('#fJefe').value ? 'active':''}" data-coord="" data-own=""><div class="coord-top"><div class="avatar" style="background:linear-gradient(135deg,#1A1A2E,#26264A)">👥</div><div><div class="coord-name">Todos los equipos</div><div class="coord-cargo">Sin filtro</div></div></div><div class="coord-stats"><span class="coord-tag pink">${totalEquipo} personas</span></div></div>`;
   }
-
   lista.forEach(nombre => {
     const equipo = m.rows.filter(r => r.jefe === nombre);
     const propioRow = m.rows.find(r => clean(r.nombre) === clean(nombre));
     const cargo = propioRow?.cargo || 'Coordinador';
     const isActive = (COORD_OWN && clean(nombre) === clean(COORD_OWN)) || ($('#fJefe').value && clean($('#fJefe').value) === clean(nombre));
     const color = colorFor(nombre);
-
     html += `<div class="coord-card ${isActive?'active':''}" data-coord="${esc(nombre)}" data-own=""><div class="coord-top"><div class="avatar" style="background:${color}">${initials(nombre)}</div><div style="min-width:0"><div class="coord-name">${esc(nombre)}</div><div class="coord-cargo">${esc(cargo)}</div></div></div><div class="coord-stats"><span class="coord-tag pink">${equipo.length} en equipo</span>${propioRow ? `<span class="coord-tag" data-own="${esc(nombre)}" style="cursor:pointer;background:#1A1A2E;color:#fff">Ver su horario</span>` : ''}</div></div>`;
   });
-
   $('#coordGrid').innerHTML = html;
 
   $('#coordGrid').querySelectorAll('.coord-card').forEach(card => {
@@ -1172,7 +1284,6 @@ function buildCoordCards(){
 function selectModel(i){
   CURRENT = MODELS[i];
   COORD_OWN = '';
-
   const jefes = [...new Set(CURRENT.rows.map(r => r.jefe))].sort((a,b)=>a.localeCompare(b,'es'));
   let opts = '<option value="">— Todos los jefes —</option>';
   if (USER && USER.rol === 'coord'){
@@ -1184,10 +1295,8 @@ function selectModel(i){
     opts += jefes.map(j => `<option value="${esc(j)}">${esc(j)} (${CURRENT.rows.filter(r=>r.jefe===j).length})</option>`).join('');
   }
   $('#fJefe').innerHTML = opts;
-
   const semanas = [...new Set(CURRENT.days.map(d => d.week).filter(w => w != null))].sort((a,b) => a-b);
   $('#fSemana').innerHTML = '<option value="">— Todas las semanas —</option>' + semanas.map(w => `<option value="${w}">Semana ${w}</option>`).join('');
-
   updateCompareSelects();
   buildCoordCards();
   render();
@@ -1270,7 +1379,6 @@ function render(){
     LAST = null;
     return;
   }
-
   LAST = { rows, metaCols: m.metaCols, days: dayIdx.map(i => ({ ...m.days[i], idx:i })) };
 
   if (vista === 'calendario'){ out.innerHTML = renderCalendarView(rows, dayIdx); bindCalendarNav(); return; }
@@ -1320,7 +1428,6 @@ function renderCalendarView(rows, dayIdx){
 
   let cells = '';
   for (let i=0; i<offset; i++) cells += `<div class="cal-day empty"></div>`;
-
   for (let d=1; d<=totalDias; d++){
     const info = dayMap[d];
     if (!info){
@@ -1359,7 +1466,6 @@ function renderCompareView(rows, m){
   if (semanas.length < 1) return '<div class="empty-msg">No hay semanas disponibles para comparar.</div>';
   const wA = semanas[0];
   const wB = semanas[1] !== undefined ? semanas[1] : semanas[0];
-
   const html = `<div class="cmp-container"><div class="cmp-controls"><div class="field"><label for="cmpWeekA">Semana A</label><select id="cmpWeekA">${semanas.map(w => `<option value="${w}" ${w===wA?'selected':''}>Semana ${w}</option>`).join('')}</select></div><div class="cmp-vs">vs</div><div class="field"><label for="cmpWeekB">Semana B</label><select id="cmpWeekB">${semanas.map(w => `<option value="${w}" ${w===wB?'selected':''}>Semana ${w}</option>`).join('')}</select></div></div><div class="cmp-legend"><span><span class="cmp-dot up"></span> Aumentó</span><span><span class="cmp-dot down"></span> Disminuyó</span><span><span class="cmp-dot same"></span> Sin cambios</span></div><div id="cmpResult"></div></div>`;
   setTimeout(() => computeCompare(rows, m), 0);
   return html;
@@ -1371,7 +1477,6 @@ function computeCompare(rows, m){
   const idxByWeek = w => m.days.map((d,i) => d.week === w ? i : -1).filter(i => i >= 0);
   const idxA = idxByWeek(wA);
   const idxB = idxByWeek(wB);
-
   const body = rows.map(r => {
     let hA = 0, hB = 0, dA = 0, dB = 0;
     idxA.forEach(i => { if (r.hours[i] > 0){ hA += r.hours[i]; dA++; } });
@@ -1383,15 +1488,12 @@ function computeCompare(rows, m){
     const signD = diffD > 0 ? '+' : '';
     return `<tr><td class="c-dni">${esc(r.dni)}</td><td class="c-nom">${esc(r.nombre)}</td><td>${hA > 0 ? hA.toFixed(1)+'h' : '—'}</td><td>${hB > 0 ? hB.toFixed(1)+'h' : '—'}</td><td class="${cls}">${sign}${diffH.toFixed(1)}h</td><td>${dA}</td><td>${dB}</td><td class="${clsD}">${signD}${diffD}</td></tr>`;
   }).join('');
-
   let totA = 0, totB = 0;
   rows.forEach(r => { idxA.forEach(i => totA += r.hours[i]); idxB.forEach(i => totB += r.hours[i]); });
   const diffTot = totB - totA;
   const clsTot = diffTot > 0 ? 'diff-up' : diffTot < 0 ? 'diff-down' : 'diff-same';
   const signTot = diffTot > 0 ? '+' : '';
-
   const html = `<div class="table-wrap"><table><thead><tr><th class="c-dni">DNI</th><th class="c-nom">Nombre</th><th class="week">Sem ${wA}</th><th class="week">Sem ${wB}</th><th>Δ Horas</th><th class="week">Días ${wA}</th><th class="week">Días ${wB}</th><th>Δ Días</th></tr></thead><tbody>${body}</tbody><tfoot><tr><td></td><td style="text-align:left">TOTAL</td><td>${totA.toFixed(1)}h</td><td>${totB.toFixed(1)}h</td><td class="${clsTot}">${signTot}${diffTot.toFixed(1)}h</td><td colspan="3"></td></tr></tfoot></table></div>`;
-
   const cont = document.getElementById('cmpResult');
   if (cont) cont.innerHTML = html;
 }
@@ -1416,16 +1518,13 @@ function tablaDetalle(lista, dayIdx, m, soloHoras){
     if (last && last.week === w) last.items.push(k);
     else wgroups.push({ week:w, items:[k] });
   });
-
   let h1 = '<tr><th class="c-idx" rowspan="2">#</th><th class="c-dni" rowspan="2">DNI</th><th class="c-nom" rowspan="2">Nombre</th>';
   m.metaCols.forEach(mc => h1 += `<th rowspan="2" class="${metaClass(mc)}">${esc(mc.label)}</th>`);
   wgroups.forEach(g => h1 += `<th class="week" colspan="${g.items.length}">SEMANA ${g.week}</th>`);
   h1 += '<th class="c-tot" rowspan="2">Total</th></tr>';
-
   let h2 = '<tr>';
   days.forEach(d => { const f = d.date ? `${pad2(d.date.d)}/${pad2(d.date.m)}` : ''; h2 += `<th class="day">${esc(d.letter)}<span>${f}</span></th>`; });
   h2 += '</tr>';
-
   let body = '';
   lista.forEach((r, idx) => {
     const isOwn = COORD_OWN && clean(r.nombre) === clean(COORD_OWN);
@@ -1436,13 +1535,11 @@ function tablaDetalle(lista, dayIdx, m, soloHoras){
     tr += `<td class="tot">${fmtH(tot) || '0h'}</td></tr>`;
     body += tr;
   });
-
   let foot = '<tfoot><tr><td class="c-idx"></td><td class="c-dni"></td><td class="c-nom">TOTAL DÍA</td>';
   m.metaCols.forEach(mc => foot += `<td class="${metaClass(mc)}"></td>`);
   let gt = 0;
   dayIdx.forEach(i => { let s = 0; lista.forEach(r => s += r.hours[i]); gt += s; foot += `<td>${fmtH(s) || '0'}</td>`; });
   foot += `<td class="tot">${fmtH(gt) || '0h'}</td></tr></tfoot>`;
-
   return `<table><thead>${h1}${h2}</thead><tbody>${body}</tbody>${foot}</table>`;
 }
 
@@ -1462,12 +1559,10 @@ function tablaResumen(lista, dayIdx, m){
   const weeks = [...new Set(dayIdx.map(i => m.days[i].week))].sort((a,b)=>a-b);
   const idxByWeek = {};
   weeks.forEach(w => idxByWeek[w] = dayIdx.filter(i => m.days[i].week === w));
-
   let head = '<tr><th class="c-idx">#</th><th class="c-dni">DNI</th><th class="c-nom">Nombre</th>';
   m.metaCols.forEach(mc => head += `<th class="${metaClass(mc)}">${esc(mc.label)}</th>`);
   weeks.forEach(w => head += `<th class="week">SEM ${w}</th>`);
   head += '<th class="c-tot">TOTAL</th></tr>';
-
   let body = '';
   lista.forEach((r, idx) => {
     let tr = `<tr><td class="c-idx">${idx+1}</td><td class="c-dni">${esc(r.dni)}</td><td class="c-nom">${esc(r.nombre)}</td>`;
@@ -1477,13 +1572,11 @@ function tablaResumen(lista, dayIdx, m){
     tr += `<td class="tot">${fmtH(tot) || '0h'}</td></tr>`;
     body += tr;
   });
-
   let foot = '<tfoot><tr><td class="c-idx"></td><td class="c-dni"></td><td class="c-nom">TOTAL SEMANA</td>';
   m.metaCols.forEach(mc => foot += `<td class="${metaClass(mc)}"></td>`);
   let gt = 0;
   weeks.forEach(w => { let s = 0; lista.forEach(r => idxByWeek[w].forEach(i => s += r.hours[i])); gt += s; foot += `<td>${fmtH(s) || '0'}</td>`; });
   foot += `<td class="tot">${fmtH(gt) || '0h'}</td></tr></tfoot>`;
-
   return `<table><thead>${head}</thead><tbody>${body}</tbody>${foot}</table>`;
 }
 
@@ -1526,22 +1619,23 @@ USER = getSession();
 updateUserUI();
 if (!USER) showLogin();
 
-/* ---- Cargar XLSX con reintentos y habilitar dropzone ---- */
-setDropzoneReady(false);
-loadXLSX()
-  .then(() => {
-    XLSX_READY = true;
-    setDropzoneReady(true);
-    setStatus('✅ Librería Excel lista. Arrastra tu archivo para comenzar.', 'ok');
-  })
-  .catch(err => {
-    console.error(err);
-    setStatus('❌ No se pudo cargar la librería Excel. Verifica tu conexión a Internet y recarga la página.', true);
-    const dzEl = document.getElementById('dropzone');
-    if (dzEl){
-      dzEl.querySelector('strong').textContent = '⚠️ No se pudo cargar la librería Excel · recarga la página (F5)';
-    }
-  });
+// La dropzone solo se muestra al admin
+if (USER && USER.rol === 'admin') dz.classList.add('on');
+
+// Revisar el rol del usuario al cambiar sesión para mostrar/ocultar dropzone
+const origHideLogin = hideLogin;
+hideLogin = function(){
+  origHideLogin();
+  const dzEl = document.getElementById('dropzone');
+  if (USER && USER.rol === 'admin') dzEl.classList.add('on');
+  else dzEl.classList.remove('on');
+  updateCloudUI();
+};
+
+// Si NO es admin y ya hay sesión, intentar cargar datos de la nube
+setTimeout(() => {
+  if (USER && USER.rol === 'coord' && FIREBASE_OK) pullFromCloud();
+}, 800);
 </script>
 </body>
 </html>
