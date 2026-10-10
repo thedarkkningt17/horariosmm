@@ -496,9 +496,11 @@
   }
 })();
 </script>
+
+<script>
 /* =========================================================
    CONFIGURACIÓN
-   ========================================================= */
+ ========================================================= */
 const CREDENTIALS = { admin: { user:'admin', pass:'admin123' } };
 const SESSION_KEY = 'le_horarios_session';
 const CLOUD_DOC = 'horarios/actual';  // ruta del documento en Firestore
@@ -821,39 +823,14 @@ async function pullFromCloud(){
   }
 }
 
-/* =========================================================
-   FIREBASE READY - con comprobación de estado
-   ========================================================= */
-function onFirebaseReady(){
-  if (FIREBASE_OK) return; // evitar duplicados
+window.addEventListener('firebase-ready', () => {
   FIREBASE_OK = true;
-  console.log('[FB] Evento firebase-ready procesado · USER:', USER);
   setCloudStatus('ok', '✅ Conectado a la nube', 'Firebase listo');
-  updateCloudUI();
-
-  // Si es coordinador ya logueado → cargar datos
-  if (USER && USER.rol === 'coord'){
-    pullFromCloud();
-  }
-}
-
-// Escuchar el evento (por si llega después)
-window.addEventListener('firebase-ready', onFirebaseReady);
-
-// Comprobar si Firebase ya cargó antes de registrar este listener
-if (typeof window.FB !== 'undefined' && window.FB && window.FB.db){
-  console.log('[FB] Firebase ya estaba cargado, procesando inmediatamente');
-  onFirebaseReady();
-}
-
-// Timeout de seguridad: si tras 5s no hay conexión, avisar
-setTimeout(() => {
-  if (!FIREBASE_OK){
-    console.warn('[FB] Timeout: Firebase no respondió en 5 segundos');
-    setCloudStatus('err', '❌ No se pudo conectar a la nube',
-      'Verifica tu conexión a Internet y recarga la página (Ctrl+Shift+R).');
-  }
-}, 5000);
+  // Auto-cargar datos de la nube si hay sesión y no es admin
+  setTimeout(() => {
+    if (USER && USER.rol === 'coord') pullFromCloud();
+  }, 300);
+});
 
 // Botón "Actualizar datos"
 document.getElementById('btnSync').addEventListener('click', pullFromCloud);
