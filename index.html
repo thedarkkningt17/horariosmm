@@ -672,6 +672,12 @@ function doLogin(){
     if (u === CREDENTIALS.admin.user && p === CREDENTIALS.admin.pass){
       USER = { rol:'admin', nombre:'Administrador', dni:'', cargo:'' };
       setSession(USER);
+      // Limpiar filtros heredados de sesiones anteriores
+      COORD_OWN = '';
+      const jefeSelect = document.getElementById('fJefe');
+      if (jefeSelect) jefeSelect.value = '';
+      const buscarInput = document.getElementById('fBuscar');
+      if (buscarInput) buscarInput.value = '';
       updateUserUI();
       hideLogin();
       showToast('Bienvenido, Administrador');
@@ -679,11 +685,55 @@ function doLogin(){
       dzEl.classList.add('on');
       updateCloudUI();
       if (CURRENT) applyUserFilter();
+      // Cargar datos de la nube si aún no están en memoria
+      if (FIREBASE_OK && !MODELS.length) pullFromCloud();
       return;
     }
     err.textContent = 'Usuario o contraseña incorrectos.';
     return;
   }
+
+  const dniInput = document.getElementById('loginDni').value;
+  const dni = normalizeDni(dniInput);
+  if (!dni){
+    err.textContent = 'Ingresa tu número de cédula.';
+    return;
+  }
+  console.log('[Login] Login coordinador · DNI:', dni, '· MODELS:', MODELS.length, '· FB_OK:', FIREBASE_OK);
+
+  if (MODELS.length){
+    const found = findUserByDni(dni);
+    if (!found){
+      err.textContent = 'No se encontró esa cédula en los datos actuales.';
+      return;
+    }
+    USER = { rol:'coord', nombre:found.nombre, dni, cargo:found.cargo || 'Coordinador' };
+    setSession(USER);
+    updateUserUI();
+    hideLogin();
+    showToast(`Bienvenido, ${USER.nombre}`);
+    applyUserFilter();
+    updateCloudUI();
+    return;
+  }
+
+  USER = { rol:'coord', nombre:'Cargando…', dni, cargo:'' };
+  setSession(USER);
+  updateUserUI();
+  hideLogin();
+  showToast('Sesión iniciada · cargando datos de la nube…');
+
+  if (FIREBASE_OK){
+    pullFromCloud();
+  } else {
+    console.log('[Login] Firebase no listo aún · esperando evento…');
+    setTimeout(() => {
+      if (FIREBASE_OK && (!USER.cargo || USER.nombre === 'Cargando…')){
+        pullFromCloud();
+      }
+    }, 1500);
+  }
+}
 
   const dniInput = document.getElementById('loginDni').value;
   const dni = normalizeDni(dniInput);
