@@ -827,6 +827,13 @@ document.getElementById('btnLogout').addEventListener('click', () => {
   document.getElementById('userPanel').classList.remove('open');
   clearSession();
   USER = null;
+  // Limpiar estado para que el próximo usuario empiece de cero
+  COORD_OWN = '';
+  LAST = null;
+  const jefeSelect = document.getElementById('fJefe');
+  if (jefeSelect) jefeSelect.value = '';
+  const buscarInput = document.getElementById('fBuscar');
+  if (buscarInput) buscarInput.value = '';
   updateUserUI();
   showLogin();
   showToast('Sesión cerrada');
