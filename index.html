@@ -734,31 +734,6 @@ function doLogin(){
     }, 1500);
   }
 }
-
-  const dniInput = document.getElementById('loginDni').value;
-  const dni = normalizeDni(dniInput);
-  if (!dni){
-    err.textContent = 'Ingresa tu número de cédula.';
-    return;
-  }
-  console.log('[Login] Login coordinador · DNI:', dni, '· MODELS:', MODELS.length, '· FB_OK:', FIREBASE_OK);
-
-  if (MODELS.length){
-    const found = findUserByDni(dni);
-    if (!found){
-      err.textContent = 'No se encontró esa cédula en los datos actuales.';
-      return;
-    }
-    USER = { rol:'coord', nombre:found.nombre, dni, cargo:found.cargo || 'Coordinador' };
-    setSession(USER);
-    updateUserUI();
-    hideLogin();
-    showToast(`Bienvenido, ${USER.nombre}`);
-    applyUserFilter();
-    updateCloudUI();
-    return;
-  }
-
   USER = { rol:'coord', nombre:'Cargando…', dni, cargo:'' };
   setSession(USER);
   updateUserUI();
