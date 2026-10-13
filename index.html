@@ -434,7 +434,7 @@
       </div>
     </div>
     <div class="footer-meta">
-      <span><span class="footer-dot"></span> Visor de Horarios <b>v5.3 · Nube</b></span>
+      <span><span class="footer-dot"></span> Visor de Horarios <b>v5.4 · Nube</b></span>
       <span>Cliente: <b>Abai · MediaMarkt</b></span>
     </div>
   </div>
@@ -605,7 +605,6 @@ function doLogin(){
     if (u === CREDENTIALS.admin.user && p === CREDENTIALS.admin.pass){
       USER = { rol:'admin', nombre:'Administrador', dni:'', cargo:'' };
       setSession(USER);
-      // Limpiar filtros heredados de sesiones anteriores
       COORD_OWN = '';
       const jefeSelect = document.getElementById('fJefe');
       if (jefeSelect) jefeSelect.value = '';
@@ -618,7 +617,6 @@ function doLogin(){
       dzEl.classList.add('on');
       updateCloudUI();
       if (CURRENT) applyUserFilter();
-      // Cargar datos de la nube si aún no están en memoria
       if (FIREBASE_OK && !MODELS.length) pullFromCloud();
       return;
     }
@@ -815,7 +813,8 @@ async function pullFromCloud(){
     $('#coordSection').classList.add('on');
     $('#legend').style.display = 'flex';
 
-    if (USER && USER.rol === 'coord' && (!USER.cargo || USER.nombre === 'Cargando…')){
+    // Validar SIEMPRE que el coordinador aún no esté validado
+    if (USER && USER.rol === 'coord' && (!USER.cargo || USER.nombre === 'Cargando…' || USER.nombre === 'Coordinador')){
       const found = findUserByDni(USER.dni);
       console.log('[FB] Validando DNI', USER.dni, '→ encontrado:', found);
       if (found){
@@ -823,15 +822,22 @@ async function pullFromCloud(){
         USER.cargo = found.cargo || 'Coordinador';
         setSession(USER);
         updateUserUI();
+        showToast(`✅ Bienvenido, ${USER.nombre}`);
       } else {
         showToast('⚠️ Tu cédula no aparece en los horarios publicados');
+        USER.nombre = 'Coordinador sin datos';
+        setSession(USER);
+        updateUserUI();
       }
     }
 
     COORD_OWN = '';
     selectModel(0);
 
-    if (USER && USER.rol === 'coord'){
+    if (USER && USER.rol === 'coord' && USER.nombre && USER.nombre !== 'Cargando…' && USER.nombre !== 'Coordinador sin datos'){
+      COORD_OWN = '';
+      const jefeSel = document.getElementById('fJefe');
+      if (jefeSel) jefeSel.value = '';
       applyUserFilter();
     }
 
@@ -1317,10 +1323,15 @@ function render(){
   const hideMeta = $('#fHideMeta').checked;
   const hideTot = $('#fHideTot').checked;
 
-  if (COORD_OWN){
+  if (COORD_OWN && COORD_OWN !== 'Cargando…' && COORD_OWN !== 'Coordinador sin datos'){
     banner.innerHTML = `<div class="own-banner">👤 Viendo el <b>horario propio</b> de ${esc(COORD_OWN)}<button id="btnClearOwn">✕ Quitar filtro</button></div>`;
     $('#btnClearOwn').addEventListener('click', () => { COORD_OWN = ''; render(); buildCoordCards(); });
-  } else banner.innerHTML = '';
+  } else {
+    if (COORD_OWN === 'Cargando…' || COORD_OWN === 'Coordinador sin datos'){
+      COORD_OWN = '';
+    }
+    banner.innerHTML = '';
+  }
 
   let dayIdx = m.days.map((d,i) => i);
   if (weekSel) dayIdx = dayIdx.filter(i => String(m.days[i].week) === weekSel);
