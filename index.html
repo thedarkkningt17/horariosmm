@@ -434,7 +434,7 @@
       </div>
     </div>
     <div class="footer-meta">
-      <span><span class="footer-dot"></span> Visor de Horarios <b>v5.4 · Nube</b></span>
+      <span><span class="footer-dot"></span> Visor de Horarios <b>v5.5 · Nube</b></span>
       <span>Cliente: <b>Abai · MediaMarkt</b></span>
     </div>
   </div>
@@ -491,6 +491,19 @@
    CONFIGURACIÓN
    ========================================================= */
 const CREDENTIALS = { admin: { user:'admin', pass:'admin123' } };
+
+// Lista blanca de coordinadores autorizados
+const COORDINADORES_AUTORIZADOS = {
+  '3819217':    'ADRIAN ENRIQUE LEDEZMA PINTO',
+  '1005298264': 'ANYI LOREIN BARRIOS CARVAJALINO',
+  '1098784749': 'HERIK FABIAN CARDENAS BELTRAN',
+  '1005235330': 'JOHAN ANDRES FLOREZ GARNICA',
+  '1098640642': 'RICARDO VILLAMIL PICO',
+  '1096243203': 'SERGIO ANTONIO BARRAGAN MACIAS',
+  '1098100095': 'WENDY YULIANA SANCHEZ SANCHEZ',
+  '1102381141': 'YULIETH VIVIANA MORENO ALONSO'
+};
+
 const SESSION_KEY = 'le_horarios_session';
 
 let USER = null;
@@ -630,39 +643,49 @@ function doLogin(){
     err.textContent = 'Ingresa tu número de cédula.';
     return;
   }
-  console.log('[Login] Login coordinador · DNI:', dni, '· MODELS:', MODELS.length, '· FB_OK:', FIREBASE_OK);
 
-  if (MODELS.length){
-    const found = findUserByDni(dni);
-    if (!found){
-      err.textContent = 'No se encontró esa cédula en los datos actuales.';
-      return;
-    }
-    USER = { rol:'coord', nombre:found.nombre, dni, cargo:found.cargo || 'Coordinador' };
-    setSession(USER);
-    updateUserUI();
-    hideLogin();
-    showToast(`Bienvenido, ${USER.nombre}`);
-    applyUserFilter();
-    updateCloudUI();
+  // Validar contra la lista blanca de coordinadores autorizados
+  const nombreAutorizado = COORDINADORES_AUTORIZADOS[dni];
+  if (!nombreAutorizado){
+    err.textContent = 'Tu cédula no está autorizada como coordinador. Verifica el número.';
     return;
   }
 
-  USER = { rol:'coord', nombre:'Cargando…', dni, cargo:'' };
+  console.log('[Login] Coordinador autorizado · DNI:', dni, '· Nombre:', nombreAutorizado);
+
+  USER = { rol:'coord', nombre: nombreAutorizado, dni, cargo:'Coordinador' };
   setSession(USER);
   updateUserUI();
   hideLogin();
-  showToast('Sesión iniciada · cargando datos de la nube…');
+  showToast(`Bienvenido, ${nombreAutorizado}`);
 
-  if (FIREBASE_OK){
+  // Ahora cargar datos de la nube
+  if (FIREBASE_OK && MODELS.length){
+    // Ya hay datos en memoria, aplicar filtro directo
+    applyUserFilter();
+    updateCloudUI();
+  } else if (FIREBASE_OK){
+    // Firebase listo pero sin datos aún → descargar
     pullFromCloud();
+    updateCloudUI();
   } else {
+    // Firebase aún no listo → esperar al evento
     console.log('[Login] Firebase no listo aún · esperando evento…');
-    setTimeout(() => {
-      if (FIREBASE_OK && (!USER.cargo || USER.nombre === 'Cargando…')){
+    showToast('Esperando conexión a la nube…');
+    const esperar = setInterval(() => {
+      if (FIREBASE_OK){
+        clearInterval(esperar);
         pullFromCloud();
+        updateCloudUI();
       }
-    }, 1500);
+    }, 300);
+    // Timeout de 10s por si nunca llega
+    setTimeout(() => {
+      clearInterval(esperar);
+      if (!FIREBASE_OK){
+        showToast('⚠️ No se pudo conectar a la nube. Revisa tu conexión.');
+      }
+    }, 10000);
   }
 }
 
@@ -813,19 +836,21 @@ async function pullFromCloud(){
     $('#coordSection').classList.add('on');
     $('#legend').style.display = 'flex';
 
-    // Validar SIEMPRE que el coordinador aún no esté validado
-    if (USER && USER.rol === 'coord' && (!USER.cargo || USER.nombre === 'Cargando…' || USER.nombre === 'Coordinador')){
-      const found = findUserByDni(USER.dni);
-      console.log('[FB] Validando DNI', USER.dni, '→ encontrado:', found);
-      if (found){
-        USER.nombre = found.nombre;
-        USER.cargo = found.cargo || 'Coordinador';
-        setSession(USER);
+    // Validar que el coordinador tenga sesión activa
+    if (USER && USER.rol === 'coord'){
+      const nombreEsperado = COORDINADORES_AUTORIZADOS[normalizeDni(USER.dni)];
+      if (!nombreEsperado){
+        showToast('⚠️ Tu cédula ya no está autorizada');
+        clearSession();
+        USER = null;
         updateUserUI();
-        showToast(`✅ Bienvenido, ${USER.nombre}`);
-      } else {
-        showToast('⚠️ Tu cédula no aparece en los horarios publicados');
-        USER.nombre = 'Coordinador sin datos';
+        showLogin();
+        return;
+      }
+      // Confirmar el nombre por si acaso
+      if (USER.nombre !== nombreEsperado){
+        USER.nombre = nombreEsperado;
+        USER.cargo = 'Coordinador';
         setSession(USER);
         updateUserUI();
       }
@@ -834,7 +859,7 @@ async function pullFromCloud(){
     COORD_OWN = '';
     selectModel(0);
 
-    if (USER && USER.rol === 'coord' && USER.nombre && USER.nombre !== 'Cargando…' && USER.nombre !== 'Coordinador sin datos'){
+    if (USER && USER.rol === 'coord'){
       COORD_OWN = '';
       const jefeSel = document.getElementById('fJefe');
       if (jefeSel) jefeSel.value = '';
@@ -1663,6 +1688,21 @@ renderSwatches();
 loadTheme();
 
 USER = getSession();
+
+// Validar que si hay sesión de coordinador, siga autorizado
+if (USER && USER.rol === 'coord'){
+  const nombreEsperado = COORDINADORES_AUTORIZADOS[normalizeDni(USER.dni)];
+  if (!nombreEsperado){
+    // Cédula ya no está autorizada → limpiar sesión
+    clearSession();
+    USER = null;
+  } else {
+    // Refrescar el nombre por si cambió
+    USER.nombre = nombreEsperado;
+    USER.cargo = 'Coordinador';
+  }
+}
+
 updateUserUI();
 
 if (USER){
