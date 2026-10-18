@@ -1722,6 +1722,14 @@ $('#btnImagen').addEventListener('click', async () => {
   
   showToast(esMovil ? '📷 Generando imagen (puede tardar en móvil)…' : '📷 Generando imagen…');
 
+// Calcular tamaño estimado
+const anchoEstimado = contenedor.scrollWidth;
+const altoEstimado = contenedor.scrollHeight;
+if (esMovil && (anchoEstimado > 8000 || altoEstimado > 8000)){
+  const continuar = confirm('⚠️ La imagen será muy grande (' + anchoEstimado + 'x' + altoEstimado + ' px) y puede fallar en tu móvil.\n\nRecomendación: filtra por un solo coordinador o cambia a la vista "Planificador" para reducir el tamaño.\n\n¿Continuar de todos modos?');
+  if (!continuar) return;
+}
+
   // Guardar posición del scroll para restaurarlo después
   const scrollX = window.scrollX;
   const scrollY = window.scrollY;
