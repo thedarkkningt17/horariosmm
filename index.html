@@ -1407,7 +1407,24 @@ function render(){
     let gh = 0;
     lista.forEach(r => dayIdx.forEach(i => gh += r.hours[i]));
     const jefeCargo = lista.find(r=>r.jefe===jefe)?.cargo || '';
-    html += `<section class="group"><div class="group-head"><h3>👤 ${esc(jefe)}</h3>${jefeCargo ? `<span class="pill">${esc(jefeCargo)}</span>` : ''}<span class="pill">${lista.length} persona${lista.length!==1?'s':''}</span><span class="pill g">${gh % 1 ? gh.toFixed(1) : gh} h en el rango</span></div><div class="table-wrap ${hideDni?'hide-dni':''} ${hideMeta?'hide-meta':''} ${hideTot?'hide-tot':''}">`;
+    
+    // Detectar si es vista de "horario propio" para cambiar el título
+    let tituloGrupo = jefe;
+    let pillExtra = '';
+    if (COORD_OWN) {
+      const esMiPropioHorario = USER && clean(COORD_OWN) === clean(USER.nombre);
+      const nombreCorto = COORD_OWN.split(' ').slice(0, 2).join(' '); // Solo nombre y primer apellido
+      
+      if (esMiPropioHorario) {
+        tituloGrupo = `Mi horario (${nombreCorto})`;
+        pillExtra = `<span class="pill">Tú</span>`;
+      } else {
+        tituloGrupo = `Horario de ${nombreCorto}`;
+        pillExtra = `<span class="pill">Vista individual</span>`;
+      }
+    }
+
+    html += `<section class="group"><div class="group-head"><h3>👤 ${esc(tituloGrupo)}</h3>${pillExtra}${jefeCargo ? `<span class="pill">${esc(jefeCargo)}</span>` : ''}<span class="pill">${lista.length} persona${lista.length!==1?'s':''}</span><span class="pill g">${gh % 1 ? gh.toFixed(1) : gh} h en el rango</span></div><div class="table-wrap ${hideDni?'hide-dni':''} ${hideMeta?'hide-meta':''} ${hideTot?'hide-tot':''}">`;
     html += (vista === 'detalle') ? tablaDetalle(lista, dayIdx, m, soloHoras) : tablaResumen(lista, dayIdx, m);
     html += `</div></section>`;
   }
