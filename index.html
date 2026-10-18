@@ -1717,24 +1717,60 @@ $('#btnImagen').addEventListener('click', async () => {
     return;
   }
 
-  showToast('📷 Generando imagen…');
+  // Detectar si es móvil
+  const esMovil = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  showToast(esMovil ? '📷 Generando imagen (puede tardar en móvil)…' : '📷 Generando imagen…');
 
-  // Ocultar temporalmente botones/elementos que no queremos en la imagen
-  const banner = document.getElementById('ownBanner');
-  const bannerVisible = banner && banner.style.display !== 'none';
+  // Guardar posición del scroll para restaurarlo después
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
 
   try{
-    // Configurar opciones de html2canvas
+    // Forzar el contenedor a mostrar TODO su contenido (sin scroll interno)
+    const wrappers = contenedor.querySelectorAll('.table-wrap');
+    wrappers.forEach(w => {
+      w.dataset.oldOverflow = w.style.overflow || '';
+      w.dataset.oldMaxHeight = w.style.maxHeight || '';
+      w.style.overflow = 'visible';
+      w.style.maxHeight = 'none';
+    });
+
+    // Dar tiempo al navegador para recalcular
+    await new Promise(r => setTimeout(r, 100));
+
+    const ancho = contenedor.scrollWidth;
+    const alto = contenedor.scrollHeight;
+
     const canvas = await html2canvas(contenedor, {
       backgroundColor: '#ffffff',
-      scale: 2,                  // Mayor resolución
+      scale: esMovil ? 1 : 2,     // Móvil: escala 1 para evitar límite de memoria
       useCORS: true,
       logging: false,
-      windowWidth: contenedor.scrollWidth,
-      windowHeight: contenedor.scrollHeight,
-      height: contenedor.scrollHeight,
-      width: contenedor.scrollWidth
+      windowWidth: ancho,
+      windowHeight: alto,
+      height: alto,
+      width: ancho,
+      scrollX: 0,
+      scrollY: 0,
+      onclone: (clonedDoc) => {
+        // En el clon, asegurar que los wrappers también estén expandidos
+        const clonedWrappers = clonedDoc.querySelectorAll('.table-wrap');
+        clonedWrappers.forEach(w => {
+          w.style.overflow = 'visible';
+          w.style.maxHeight = 'none';
+        });
+      }
     });
+
+    // Restaurar overflow de los wrappers
+    wrappers.forEach(w => {
+      w.style.overflow = w.dataset.oldOverflow;
+      w.style.maxHeight = w.dataset.oldMaxHeight;
+    });
+
+    // Restaurar scroll
+    window.scrollTo(scrollX, scrollY);
 
     // Convertir a imagen y descargar
     const enlace = document.createElement('a');
@@ -1748,7 +1784,14 @@ $('#btnImagen').addEventListener('click', async () => {
     showToast('✅ Imagen descargada');
   } catch(err){
     console.error(err);
-    showToast('❌ Error al generar la imagen');
+    // Restaurar en caso de error
+    const wrappers = contenedor.querySelectorAll('.table-wrap');
+    wrappers.forEach(w => {
+      if (w.dataset.oldOverflow !== undefined) w.style.overflow = w.dataset.oldOverflow;
+      if (w.dataset.oldMaxHeight !== undefined) w.style.maxHeight = w.dataset.oldMaxHeight;
+    });
+    window.scrollTo(scrollX, scrollY);
+    showToast('❌ Error al generar la imagen. Intenta desde un computador.');
   }
 });
 /* =========================================================
