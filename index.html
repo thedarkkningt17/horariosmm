@@ -1499,8 +1499,7 @@ function renderPlanificadorView(rows, dayIdx){
     body += `<tr>
       <td class="plan-name-cell">
         <div class="plan-name">${esc(r.nombre)}</div>
-        <div class="plan-meta">${esc(r.dni)} · ${esc((r.meta.MODO || '—').toUpperCase())}</div>
-      </td>`;
+      </td>`;;
     let totalH = 0;
     dayIdx.forEach(i => {
       const raw = r.shifts[i] || '';
